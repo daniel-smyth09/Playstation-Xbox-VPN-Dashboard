@@ -1,10 +1,10 @@
 #!/bin/bash
 # ============================================================
-#  PS5 VPN Gateway - Complete Uninstaller
+#  PS5/Xbox VPN PIA Dashboard - Complete Uninstaller
 #  Removes all components installed by install-vpn.sh
 #
 #  Author: Daniel Smyth
-#  GitHub: https://github.com/daniel-smyth09/PS5-VPN-Dashboard
+#  GitHub: https://github.com/daniel-smyth09/Playstation-Xbox-VPN-Dashboard
 # ============================================================
 
 # --- Must be root ---
@@ -15,9 +15,9 @@ fi
 
 clear
 echo "============================================================"
-echo "  PS5 VPN Gateway Uninstaller"
+echo "  PS5/Xbox VPN PIA Dashboard Uninstaller"
 echo "  Author: Daniel Smyth"
-echo "  https://github.com/daniel-smyth09/PS5-VPN-Dashboard"
+echo "  https://github.com/daniel-smyth09/Playstation-Xbox-VPN-Dashboard"
 echo "============================================================"
 echo ""
 echo "This will remove ALL of the following:"
@@ -50,9 +50,9 @@ echo "    - Remove IPv6 disable from cmdline.txt"
 echo "    - Flush iptables rules (restore default firewall)"
 echo "    - Re-enable NetworkManager on all interfaces"
 echo ""
-echo "!! WARNING: This is irreversible. Your PS5 will lose its   !!"
+echo "!! WARNING: This is irreversible. Your console will lose its   !!"
 echo "!! VPN connection immediately after running this script.   !!"
-echo "!! The PS5 will need to be plugged back into your router   !!"
+echo "!! The console will need to be plugged back into your router   !!"
 echo "!! directly to regain internet access.                     !!"
 echo ""
 read -p "Are you SURE you want to continue? Type 'yes' to confirm: " CONFIRM
@@ -112,7 +112,11 @@ echo "  Flushing iptables rules..."
 iptables -F 2>/dev/null || true
 iptables -t nat -F 2>/dev/null || true
 iptables -t mangle -F 2>/dev/null || true
+iptables -t raw -F 2>/dev/null || true
 iptables -X 2>/dev/null || true
+iptables -P INPUT ACCEPT 2>/dev/null || true
+iptables -P FORWARD ACCEPT 2>/dev/null || true
+iptables -P OUTPUT ACCEPT 2>/dev/null || true
 
 # Also clear any PIA-specific chains
 for chain in $(iptables -S 2>/dev/null | grep '^\-N piavpn' | awk '{print $2}'); do
@@ -149,10 +153,40 @@ if [ -f /var/lib/vpn-dashboard/pin.hash ]; then
 fi
 rm -rf /var/lib/vpn-dashboard
 
+# Check for PIA login file and ask before removing
+REAL_USER="${SUDO_USER:-$USER}"
+if [ "$REAL_USER" = "root" ] || [ -z "$REAL_USER" ]; then REAL_USER="pi"; fi
+REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6 2>/dev/null || echo "/home/$REAL_USER")
+LOGIN_FILE="$REAL_HOME/.pia.login"
+if [ -f "$LOGIN_FILE" ]; then
+  echo ""
+  read -p "  Remove PIA login credentials ($LOGIN_FILE)? [y/N]: " RM_LOGIN
+  RM_LOGIN=${RM_LOGIN:-n}
+  if [ "$RM_LOGIN" = "y" ] || [ "$RM_LOGIN" = "Y" ]; then
+    rm -f "$LOGIN_FILE"
+    echo "    (Removed: $LOGIN_FILE)"
+  else
+    echo "    (Kept: $LOGIN_FILE — will be reused if you reinstall)"
+  fi
+fi
+
 echo "  Removing NetworkManager unmanaged config..."
 rm -f /etc/NetworkManager/conf.d/99-unmanaged-lan.conf
 rm -f /etc/NetworkManager/conf.d/99-unmanaged-wlan.conf
+
+echo "  Restoring NetworkManager control of all interfaces..."
+nmcli device set eth0 managed yes 2>/dev/null || true
+nmcli device set eth1 managed yes 2>/dev/null || true
+nmcli device set wlan0 managed yes 2>/dev/null || true
 systemctl restart NetworkManager 2>/dev/null || true
+
+echo "  Restoring DNS resolution..."
+# Remove our dnsmasq config that grabs port 53
+rm -f /etc/dnsmasq.conf
+mv /etc/dnsmasq.conf.orig /etc/dnsmasq.conf 2>/dev/null || true
+# Restore a working resolv.conf with public nameservers
+echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
+echo "    (resolv.conf restored with Cloudflare + Google DNS)"
 
 echo "  Removing dashboard app..."
 rm -rf /opt/vpn-dashboard
@@ -250,7 +284,7 @@ echo "  Uninstall Complete!"
 echo "============================================================"
 echo ""
 echo "The following has been removed from this Pi:"
-echo "  - PS5 VPN Gateway (all services and configs)"
+echo "  - VPN Gateway (all services and configs)"
 echo "  - Firewall rules (flushed)"
 echo "  - Network interface configuration"
 echo ""
@@ -266,14 +300,14 @@ echo "------------------------------------------------------------"
 echo "  IMPORTANT - NEXT STEPS"
 echo "------------------------------------------------------------"
 echo ""
-echo "  Your PS5 currently has NO internet connection because the"
+echo "  Your console currently has NO internet connection because the"
 echo "  Pi is no longer acting as a gateway."
 echo ""
-echo "  To get the PS5 back online:"
+echo "  To get your console back online:"
 echo ""
 echo "    1. Unplug the Ethernet cable from the Pi's USB adapter"
 echo "    2. Plug it directly into your router"
-echo "    3. On PS5: Settings -> Network -> Test Internet Connection"
+echo "    3. On your console: Settings -> Network -> Test Internet Connection"
 echo ""
 echo "  To restore IPv6 (if you need it), reboot the Pi:"
 echo ""
@@ -286,8 +320,8 @@ if [ -f /root/vpn-dashboard-pin.backup ]; then
   echo ""
 fi
 echo "============================================================"
-echo "  PS5 VPN Gateway Uninstaller"
+echo "  PS5/Xbox VPN PIA Dashboard Uninstaller"
 echo "  Author: Daniel Smyth"
-echo "  https://github.com/daniel-smyth09/PS5-VPN-Dashboard"
+echo "  https://github.com/daniel-smyth09/Playstation-Xbox-VPN-Dashboard"
 echo "============================================================"
 echo ""

@@ -1,11 +1,13 @@
 #!/bin/bash
 # ============================================================
-#  PS5 VPN Gateway - Complete Installer
+#  PS5/Xbox VPN PIA Dashboard - Complete Installer
 #  For Raspberry Pi 4/5 with stock Raspberry Pi OS (Bookworm)
-#  Ethernet-only: USB adapter = LAN (PS5), onboard = WAN (router)
+#  Ethernet-only: USB adapter = LAN (console), onboard = WAN (router)
+#
+#  Works with: PS4, PS5, Xbox Series S, Xbox Series X
 #
 #  Author: Daniel Smyth
-#  GitHub: https://github.com/daniel-smyth09/PS5-VPN-Dashboard
+#  GitHub: https://github.com/daniel-smyth09/Playstation-Xbox-VPN-Dashboard
 # ============================================================
 set -e
 
@@ -22,9 +24,9 @@ FILES_DIR="$SCRIPT_DIR/files"
 
 clear
 echo "============================================================"
-echo "  PS5 VPN Gateway Installer"
+echo "  PS5/Xbox VPN PIA Dashboard Installer"
 echo "  Author: Daniel Smyth"
-echo "  https://github.com/daniel-smyth09/PS5-VPN-Dashboard"
+echo "  https://github.com/daniel-smyth09/Playstation-Xbox-VPN-Dashboard"
 echo "============================================================"
 echo ""
 echo "REQUIRED HARDWARE:"
@@ -36,7 +38,7 @@ echo ""
 echo "WIRING DIAGRAM (IMPORTANT - read carefully):"
 echo ""
 echo "  +----------+        +----------+        +----------+"
-echo "  |  ROUTER  |========|   PI 5   |========|   PS5    |"
+echo "  |  ROUTER  |========|   PI 5   |========| CONSOLE  |"
 echo "  +----------+  eth   +----------+  eth   +----------+"
 echo "      (your)   cable      |  |     cable      (console)"
 echo "                          |  |"
@@ -57,21 +59,109 @@ echo "     to your ROUTER."
 echo "  2. Plug the USB-Ethernet adapter into one of the Pi's BLUE"
 echo "     USB 3.0 ports (NOT the black USB 2.0 ports, NOT USB-C)."
 echo "  3. Plug an Ethernet cable into the USB adapter and connect"
-echo "     the other end to your PS5."
+echo "     the other end to your console ($CONSOLE_NAME)."
 echo "  4. Power on the Pi and SSH in."
 echo ""
 echo "This setup means:"
 echo "  - All other devices in your house (phones, laptops) are"
 echo "    completely unaffected - they use your router as normal."
-echo "  - ONLY the PS5 goes through the VPN tunnel."
+echo "  - ONLY the $CONSOLE_NAME goes through the VPN tunnel."
 echo ""
 read -p "Ready to continue? (y/n) [y]: " READY
 READY=${READY:-y}
 [ "$READY" != "y" ] && [ "$READY" != "Y" ] && exit 0
 
 # ============================================================
-# STEP 1: DETECT OPERATING SYSTEM
+# CHECK IF ALREADY INSTALLED
 # ============================================================
+if [ -f /etc/vpn-dashboard.conf ] && systemctl is-active --quiet vpn-dashboard 2>/dev/null; then
+  echo ""
+  echo "============================================================"
+  echo "  VPN Dashboard Already Installed"
+  echo "============================================================"
+  echo ""
+  echo "  The dashboard is already running on this Pi."
+  echo ""
+  echo "    [1] Change PIN"
+  echo "    [2] Re-run full installer (will overwrite config)"
+  echo "    [3] Exit"
+  echo ""
+  read -p "  Choose [1-3]: " REINSTALL_CHOICE
+  case "$REINSTALL_CHOICE" in
+    1)
+      echo ""
+      while true; do
+        read -p "  Enter new PIN (4-10 digits): " NEW_PIN
+        if [[ "$NEW_PIN" =~ ^[0-9]{4,10}$ ]]; then
+          echo -n "$NEW_PIN" | sha256sum | awk '{print $1}' > /var/lib/vpn-dashboard/pin.hash
+          chmod 600 /var/lib/vpn-dashboard/pin.hash
+          echo "  PIN changed successfully!"
+          echo ""
+          exit 0
+        else
+          echo "  Invalid PIN. Use 4-10 digits only."
+        fi
+      done
+      ;;
+    2)
+      echo ""
+      echo "  Proceeding with full reinstall..."
+      ;;
+    *)
+      exit 0
+      ;;
+  esac
+fi
+
+# ============================================================
+# STEP 0.5: CONSOLE SELECTION
+# ============================================================
+echo ""
+echo "============================================================"
+echo "  Console Selection"
+echo "============================================================"
+echo ""
+echo "  Which console will be connected to this VPN gateway?"
+echo ""
+echo "    [1] PlayStation (PS4, PS5)"
+echo "    [2] Xbox (Series S, Series X)"
+echo ""
+read -p "  Choose [1 or 2]: " CONSOLE_CHOICE
+
+if [ "$CONSOLE_CHOICE" = "1" ]; then
+  CONSOLE_FAMILY="playstation"
+  echo ""
+  echo "  Which PlayStation model?"
+  echo "    [1] PS5 (default)"
+  echo "    [2] PS4"
+  read -p "  Choose [1 or 2, default 1]: " PS_MODEL
+  PS_MODEL=${PS_MODEL:-1}
+  case "$PS_MODEL" in
+    2) CONSOLE_NAME="PS4" ;;
+    *) CONSOLE_NAME="PS5" ;;
+  esac
+elif [ "$CONSOLE_CHOICE" = "2" ]; then
+  CONSOLE_FAMILY="xbox"
+  echo ""
+  echo "  Which Xbox model?"
+  echo "    [1] Xbox Series X (default)"
+  echo "    [2] Xbox Series S"
+  read -p "  Choose [1 or 2, default 1]: " XBOX_MODEL
+  XBOX_MODEL=${XBOX_MODEL:-1}
+  case "$XBOX_MODEL" in
+    2) CONSOLE_NAME="Xbox Series S" ;;
+    *) CONSOLE_NAME="Xbox Series X" ;;
+  esac
+else
+  echo "  Invalid choice. Defaulting to PS5."
+  CONSOLE_FAMILY="playstation"
+  CONSOLE_NAME="PS5"
+fi
+
+echo ""
+echo "  Console: $CONSOLE_NAME"
+echo "  The dashboard and all messages will reference this console."
+echo ""
 echo ""
 echo "============================================================"
 echo "  [1/10] Detecting Operating System"
@@ -135,22 +225,21 @@ fi
 # ============================================================
 echo ""
 echo "============================================================"
-echo "  [2/10] Updating System Packages"
+echo "  [2/10] Refreshing Package Index"
 echo "============================================================"
-echo "  Running $PKG_MGR update (this may take a minute)..."
+echo "  Refreshing package lists (no system-wide upgrade)..."
 case "$PKG_MGR" in
   apt-get)
     apt-get update -qq
-    apt-get full-upgrade -y
     ;;
   dnf|yum)
-    $PKG_MGR update -y
+    $PKG_MGR makecache -y 2>/dev/null || $PKG_MGR check-update 2>/dev/null || true
     ;;
   pacman)
-    pacman -Syu --noconfirm
+    pacman -Sy --noconfirm
     ;;
 esac
-echo "  System updated."
+echo "  Package index refreshed."
 
 # ============================================================
 # STEP 3: DETECT NETWORK INTERFACES
@@ -185,7 +274,7 @@ for iface in $INTERFACES; do
   if [ -n "$usb_check" ]; then
     if [ -z "$LAN_IF" ]; then
       LAN_IF="$iface"
-      echo "  Detected USB adapter: $iface (driver: $driver) -> LAN (PS5)"
+      echo "  Detected USB adapter: $iface (driver: $driver) -> LAN ($CONSOLE_NAME)"
     fi
   else
     if [ -z "$WAN_IF" ]; then
@@ -199,25 +288,37 @@ done
 if [ -z "$WAN_IF" ] && ip link show eth0 &>/dev/null; then WAN_IF="eth0"; fi
 if [ -z "$LAN_IF" ] && ip link show eth1 &>/dev/null; then LAN_IF="eth1"; fi
 
-if [ -z "$WAN_IF" ] || [ -z "$LAN_IF" ]; then
-  echo ""
-  echo "Could not auto-detect both interfaces. Please specify:"
-  echo "Available: $INTERFACES"
-  [ -z "$WAN_IF" ] && read -p "  WAN interface (to router): " WAN_IF
-  [ -z "$LAN_IF" ] && read -p "  LAN interface (to PS5): " LAN_IF
-fi
+while true; do
+  if [ -z "$WAN_IF" ] || [ -z "$LAN_IF" ]; then
+    echo ""
+    echo "Could not auto-detect both interfaces. Please specify."
+    echo "Available: $INTERFACES"
+    [ -z "$WAN_IF" ] && read -p "  WAN interface (to router): " WAN_IF
+    [ -z "$LAN_IF" ] && read -p "  LAN interface (to $CONSOLE_NAME): " LAN_IF
+  fi
 
-echo ""
-echo "Final assignment:"
-echo "  WAN (router): $WAN_IF"
-echo "  LAN (PS5):    $LAN_IF"
-echo ""
-read -p "Correct? (y/n) [y]: " CONFIRM
-CONFIRM=${CONFIRM:-y}
-[ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ] && exit 0
+  echo ""
+  echo "Final assignment:"
+  echo "  WAN (router):          $WAN_IF"
+  echo "  LAN ($CONSOLE_NAME):   $LAN_IF"
+  echo ""
+  read -p "Correct? (y/n) [y]: " CONFIRM
+  CONFIRM=${CONFIRM:-y}
+  if [ "$CONFIRM" = "y" ] || [ "$CONFIRM" = "Y" ]; then
+    break
+  fi
+  # User said no - let them redefine both
+  echo ""
+  echo "Please specify the correct interfaces."
+  echo "Available: $INTERFACES"
+  read -p "  WAN interface (to router): " WAN_IF
+  read -p "  LAN interface (to $CONSOLE_NAME): " LAN_IF
+done
 
 echo "LAN_IF=$LAN_IF" > /etc/vpn-dashboard.conf
 echo "WAN_IF=$WAN_IF" >> /etc/vpn-dashboard.conf
+echo "CONSOLE_NAME=$CONSOLE_NAME" >> /etc/vpn-dashboard.conf
+echo "CONSOLE_FAMILY=$CONSOLE_FAMILY" >> /etc/vpn-dashboard.conf
 chmod 644 /etc/vpn-dashboard.conf
 
 # ============================================================
@@ -318,7 +419,18 @@ else
   echo ""
   echo "  Installing PIA from: $(basename "$PIA_RUN_FILE")"
   chmod +x "$PIA_RUN_FILE"
-  if ! "$PIA_RUN_FILE" 2>&1 | sed 's/^/    /'; then
+  # PIA installer refuses to run as root - drop to the calling user
+  REAL_USER="${SUDO_USER:-$USER}"
+  if [ "$REAL_USER" = "root" ] || [ -z "$REAL_USER" ]; then
+    echo "  WARNING: Running as root with no SUDO_USER detected."
+    echo "  PIA installer needs a normal user. Trying 'pi' user..."
+    REAL_USER="pi"
+  fi
+  echo "  Running installer as user: $REAL_USER"
+  # Give the user read+execute access to the file (may be in root's home)
+  chmod 755 "$FILES_DIR" 2>/dev/null || true
+  chmod 755 "$(dirname "$PIA_RUN_FILE")" 2>/dev/null || true
+  if ! sudo -u "$REAL_USER" "$PIA_RUN_FILE" 2>&1 | grep -v -iE 'Aborted|XDG_SESSION_TYPE|nohup.*client|clear-cache' | sed 's/^/    /'; then
     echo ""
     echo "  ERROR: PIA installer failed."
     exit 1
@@ -361,11 +473,30 @@ PIA_DAEMON_SVC=$(systemctl is-active pia-daemon 2>/dev/null || systemctl is-acti
 echo "  PIA daemon: $PIA_DAEMON_SVC"
 echo "  piactl: $(piactl --version 2>/dev/null || echo 'unknown')"
 
-# Set defaults
-piactl set protocol wireguard
-DEFAULT_REGION="netherlands"
-piactl set region "$DEFAULT_REGION"
-echo "  Default region: $DEFAULT_REGION"
+# Wait for piactl to be able to communicate with the daemon
+echo "  Waiting for PIA daemon to be ready..."
+PIA_READY=0
+for i in $(seq 1 15); do
+  if piactl get connectionstate 2>/dev/null; then
+    PIA_READY=1
+    break
+  fi
+  sleep 2
+done
+if [ "$PIA_READY" = "0" ]; then
+  echo "  WARNING: piactl could not communicate with daemon after 30s."
+  echo "  You may need to restart the daemon: sudo systemctl restart pia-daemon"
+fi
+
+# Enable background mode (required for headless/Pi operation)
+echo "  Enabling PIA background mode..."
+REAL_USER="${SUDO_USER:-$USER}"
+if [ "$REAL_USER" = "root" ] || [ -z "$REAL_USER" ]; then REAL_USER="pi"; fi
+sudo -u "$REAL_USER" piactl background enable 2>/dev/null || piactl background enable 2>/dev/null || true
+sleep 2
+
+# Set protocol
+piactl set protocol wireguard 2>/dev/null || echo "  (protocol set skipped)"
 echo "  Protocol: WireGuard"
 
 # ============================================================
@@ -376,37 +507,81 @@ echo "============================================================"
 echo "  [6/10] Logging into PIA"
 echo "============================================================"
 echo ""
-echo "You need to log into your PIA account so the VPN can connect."
-echo ""
-echo "Your PIA username is your email address (e.g. you@example.com)"
-echo "or an x-prefixed username (e.g. x1234567) if you have one."
-echo "Your password is the one you set when you signed up for PIA."
-echo ""
-echo "Tip: If you don't have an account yet, sign up at:"
-echo "     https://www.privateinternetaccess.com"
-echo ""
-read -p "Enter your PIA username: " PIA_USER
-read -s -p "Enter your PIA password (hidden): " PIA_PASS
-echo ""
-echo ""
 
-echo "  Attempting login as $PIA_USER ..."
-LOGIN_RESULT=$(piactl login "$PIA_USER" "$PIA_PASS" 2>&1 || true)
-sleep 2
+# Determine real user and home directory
+REAL_USER="${SUDO_USER:-$USER}"
+if [ "$REAL_USER" = "root" ] || [ -z "$REAL_USER" ]; then REAL_USER="pi"; fi
+REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
+LOGIN_FILE="$REAL_HOME/.pia.login"
 
-if echo "$LOGIN_RESULT" | grep -qi "error\|fail\|invalid\|incorrect"; then
-  echo "  WARNING: Login may have failed:"
-  echo "  $LOGIN_RESULT"
+# Check if existing login file is present (from a previous install)
+USE_EXISTING=0
+if [ -f "$LOGIN_FILE" ]; then
+  EXISTING_USER=$(head -1 "$LOGIN_FILE" 2>/dev/null || echo "")
+  echo "  Found existing PIA login file: $LOGIN_FILE"
+  echo "  Username: $EXISTING_USER"
   echo ""
-  echo "  You can log in manually later by running:"
-  echo "    piactl login"
-  echo ""
-  read -p "Continue with install anyway? (y/n) [y]: " CONT
-  CONT=${CONT:-y}
-  [ "$CONT" != "y" ] && [ "$CONT" != "Y" ] && exit 0
-else
-  echo "  Login credentials accepted."
+  read -p "  Use these saved credentials? (y/n) [y]: " USE_SAVED
+  USE_SAVED=${USE_SAVED:-y}
+  if [ "$USE_SAVED" = "y" ] || [ "$USE_SAVED" = "Y" ]; then
+    USE_EXISTING=1
+  fi
 fi
+
+if [ "$USE_EXISTING" = "1" ]; then
+  echo "  Logging in with saved credentials..."
+  LOGIN_RESULT=$(sudo -u "$REAL_USER" piactl login "$LOGIN_FILE" 2>&1 || true)
+  sleep 3
+  if echo "$LOGIN_RESULT" | grep -qi "error\|fail\|invalid\|incorrect"; then
+    echo "  WARNING: Login may have failed: $LOGIN_RESULT"
+  elif echo "$LOGIN_RESULT" | grep -qi "already logged"; then
+    echo "  >>> Already logged in."
+  else
+    echo "  >>> Login successful (using saved credentials)."
+  fi
+else
+  # Ask for fresh credentials
+  echo "  You need to log into your PIA account so the VPN can connect."
+  echo ""
+  echo "  Tip: If you don't have an account yet, sign up at:"
+  echo "       https://www.privateinternetaccess.com"
+  echo ""
+  read -p "  Enter your PIA username: " PIA_USER
+  read -s -p "  Enter your PIA password (hidden): " PIA_PASS
+  echo ""
+  echo ""
+
+  # Write the credentials and fix ownership/permissions
+  printf '%s\n%s\n' "$PIA_USER" "$PIA_PASS" > "$LOGIN_FILE"
+  chown "$REAL_USER":"$REAL_USER" "$LOGIN_FILE"
+  chmod 600 "$LOGIN_FILE"
+
+  echo "  Logging in as $PIA_USER ..."
+  echo "  (Credentials saved to $LOGIN_FILE for future use)"
+  LOGIN_RESULT=$(sudo -u "$REAL_USER" piactl login "$LOGIN_FILE" 2>&1 || true)
+  sleep 3
+
+  if echo "$LOGIN_RESULT" | grep -qi "error\|fail\|invalid\|incorrect"; then
+    echo "  WARNING: Login may have failed:"
+    echo "    $LOGIN_RESULT"
+    echo ""
+    echo "  You can log in manually later by running:"
+    echo "    piactl login $LOGIN_FILE"
+    echo ""
+    read -p "  Continue with install anyway? (y/n) [y]: " CONT
+    CONT=${CONT:-y}
+    [ "$CONT" != "y" ] && [ "$CONT" != "Y" ] && exit 0
+  elif [ -z "$LOGIN_RESULT" ]; then
+    echo "  >>> Login successful."
+  else
+    echo "  >>> Login result: $LOGIN_RESULT"
+  fi
+fi
+
+# Set default region to auto (users change this via dashboard)
+piactl set region auto 2>/dev/null || true
+DEFAULT_REGION="auto"
+echo "  Default region: auto (change via dashboard)"
 
 # ============================================================
 # STEP 7: CONFIGURE LAN INTERFACE
@@ -424,23 +599,36 @@ if command -v nmcli &>/dev/null; then
 [keyfile]
 unmanaged-devices=interface-name:$LAN_IF
 EOF
+  # Explicitly tell NM to release the interface
+  nmcli device set "$LAN_IF" managed no 2>/dev/null || true
   systemctl restart NetworkManager 2>/dev/null || true
-  sleep 2
+  sleep 3
+  # Disconnect any NM-managed connection on it
+  nmcli device disconnect "$LAN_IF" 2>/dev/null || true
+  sleep 1
 fi
+
+# Manually configure the interface NOW (don't wait for lan-up service)
+echo "  Configuring $LAN_IF with static IP..."
+ip addr flush dev "$LAN_IF" 2>/dev/null || true
+ip link set "$LAN_IF" up 2>/dev/null || true
+ip addr add 10.99.99.1/24 dev "$LAN_IF" 2>/dev/null || true
 
 echo "  Creating lan-up service for $LAN_IF..."
 cat > /etc/systemd/system/lan-up.service << EOF
 [Unit]
-Description=Assign static IP to $LAN_IF for PS5 LAN
-After=network-pre.target
+Description=Assign static IP to $LAN_IF for $CONSOLE_NAME LAN
+After=network-pre.target NetworkManager.service
 Before=dnsmasq.service
 
 [Service]
 Type=oneshot
+ExecStartPre=/bin/sleep 2
 ExecStartPre=/usr/sbin/rfkill unblock wifi 2>/dev/null || true
-ExecStartPre=/sbin/ip addr flush dev $LAN_IF
+ExecStartPre=/sbin/ip link set dev $LAN_IF up 2>/dev/null || true
+ExecStartPre=/sbin/ip addr flush dev $LAN_IF 2>/dev/null || true
+ExecStartPre=/bin/sh -c 'nmcli device set $LAN_IF managed no 2>/dev/null || true'
 ExecStart=/sbin/ip addr add 10.99.99.1/24 dev $LAN_IF
-ExecStart=/sbin/ip link set dev $LAN_IF up
 RemainAfterExit=yes
 
 [Install]
@@ -473,7 +661,7 @@ esac
 systemctl disable --now dnsmasq 2>/dev/null || true
 
 cat > /etc/dnsmasq.conf << EOF
-# PS5 VPN Gateway - dnsmasq config
+# VPN Gateway - dnsmasq config
 interface=$LAN_IF
 listen-address=10.99.99.1
 bind-interfaces
@@ -485,10 +673,10 @@ dhcp-leasefile=/var/lib/misc/dnsmasq.leases
 dhcp-lease-max=50
 log-dhcp
 no-resolv
-server=1.1.1.1
-server=1.0.0.1
+server=10.0.0.243
+server=10.0.0.242
 EOF
-echo "  dnsmasq configured for $LAN_IF (10.99.99.0/24, DNS via Cloudflare)"
+echo "  dnsmasq configured for $LAN_IF (10.99.99.0/24, DNS via PIA tunnel)"
 
 # ============================================================
 # STEP 9: FIREWALL + NAT + KILL SWITCH + AUTO-CONNECT + DASHBOARD
@@ -499,9 +687,40 @@ echo "  [9/10] Configuring firewall, kill switch, auto-connect, dashboard"
 echo "============================================================"
 
 # --- Firewall script ---
+# cat > /usr/local/bin/vpn-fw.sh << SCRIPT_EOF
+# #!/bin/bash
+# # VPN Gateway - Firewall rules
+# LAN_NET=10.99.99.0/24
+# WAN=$WAN_IF
+# LAN=$LAN_IF
+# VPN=wgpia0
+
+# for i in \$(seq 1 30); do
+#   if [ -d "/sys/class/net/wgpia0" ]; then VPN=wgpia0; break; fi
+#   sleep 1
+# done
+
+# iptables -t nat -D POSTROUTING -s \$LAN_NET -o \$VPN -j MASQUERADE 2>/dev/null || true
+# iptables -D FORWARD -i \$LAN -o \$VPN -j ACCEPT 2>/dev/null || true
+# iptables -D FORWARD -i \$LAN -o \$WAN -j DROP 2>/dev/null || true
+
+# iptables -t nat -A POSTROUTING -s \$LAN_NET -o \$VPN -j MASQUERADE
+
+# iptables -C FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || \\
+#   iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+# iptables -C FORWARD -i \$LAN -o \$VPN -j ACCEPT 2>/dev/null || \\
+#   iptables -A FORWARD -i \$LAN -o \$VPN -j ACCEPT
+# iptables -C FORWARD -i \$LAN -o \$WAN -j DROP 2>/dev/null || \\
+#   iptables -A FORWARD -i \$LAN -o \$WAN -j DROP
+# iptables -C INPUT -i \$LAN -j ACCEPT 2>/dev/null || \\
+#   iptables -I INPUT 1 -i \$LAN -j ACCEPT
+# iptables -C INPUT -i lo -j ACCEPT 2>/dev/null || \\
+#   iptables -I INPUT 1 -i lo -j ACCEPT
+# SCRIPT_EOF
+
 cat > /usr/local/bin/vpn-fw.sh << SCRIPT_EOF
 #!/bin/bash
-# PS5 VPN Gateway - Firewall rules
+# VPN Gateway - Firewall rules
 LAN_NET=10.99.99.0/24
 WAN=$WAN_IF
 LAN=$LAN_IF
@@ -518,17 +737,31 @@ iptables -D FORWARD -i \$LAN -o \$WAN -j DROP 2>/dev/null || true
 
 iptables -t nat -A POSTROUTING -s \$LAN_NET -o \$VPN -j MASQUERADE
 
-iptables -C FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || \\
+iptables -C FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || \
   iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-iptables -C FORWARD -i \$LAN -o \$VPN -j ACCEPT 2>/dev/null || \\
+iptables -C FORWARD -i \$LAN -o \$VPN -j ACCEPT 2>/dev/null || \
   iptables -A FORWARD -i \$LAN -o \$VPN -j ACCEPT
-iptables -C FORWARD -i \$LAN -o \$WAN -j DROP 2>/dev/null || \\
+iptables -C FORWARD -i \$LAN -o \$WAN -j DROP 2>/dev/null || \
   iptables -A FORWARD -i \$LAN -o \$WAN -j DROP
-iptables -C INPUT -i \$LAN -j ACCEPT 2>/dev/null || \\
+iptables -C INPUT -i \$LAN -j ACCEPT 2>/dev/null || \
   iptables -I INPUT 1 -i \$LAN -j ACCEPT
-iptables -C INPUT -i lo -j ACCEPT 2>/dev/null || \\
+iptables -C INPUT -i lo -j ACCEPT 2>/dev/null || \
   iptables -I INPUT 1 -i lo -j ACCEPT
+
+# === SSH and management access on WAN (added after original rules) ===
+iptables -C INPUT -i \$WAN -p tcp --dport 8080 -j ACCEPT 2>/dev/null || \
+  iptables -I INPUT 1 -i \$WAN -p tcp --dport 8080 -j ACCEPT
+iptables -C INPUT -i \$WAN -p tcp --dport 22 -j ACCEPT 2>/dev/null || \
+  iptables -I INPUT 1 -i \$WAN -p tcp --dport 22 -j ACCEPT
+iptables -C INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || \
+  iptables -I INPUT 1 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+# Poke holes in PIA's chain if it exists
+iptables -I piavpn.INPUT 1 -p tcp --dport 22 -j ACCEPT 2>/dev/null || true
+iptables -I piavpn.INPUT 2 -p tcp --dport 8080 -j ACCEPT 2>/dev/null || true
+iptables -I piavpn.INPUT 3 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
 SCRIPT_EOF
+
 chmod +x /usr/local/bin/vpn-fw.sh
 
 cat > /etc/systemd/system/vpn-fw.service << EOF
@@ -550,11 +783,29 @@ EOF
 # --- PIA auto-connect helper ---
 cat > /usr/local/bin/pia-wait-and-connect.sh << EOF
 #!/bin/bash
+# Enable background mode (required for headless operation)
+piactl background enable 2>/dev/null || true
+sleep 1
+
+# Wait for daemon to respond
 for i in \$(seq 1 30); do
   piactl get connectionstate 2>/dev/null && break
   sleep 2
 done
+
+# If not logged in, try the saved login file
+LOGIN_FILE="\$(eval echo ~${REAL_USER})/.pia.login"
+STATE=\$(piactl get connectionstate 2>/dev/null)
+if [ "\$STATE" = "Disconnected" ] || [ -z "\$STATE" ]; then
+  # Try to re-login if credentials file exists
+  if [ -f "\$LOGIN_FILE" ]; then
+    piactl login "\$LOGIN_FILE" 2>/dev/null
+    sleep 2
+  fi
+fi
+
 piactl connect
+# Wait for Connected state (max 40s)
 for i in \$(seq 1 20); do
   [ "\$(piactl get connectionstate)" = "Connected" ] && exit 0
   sleep 2
@@ -591,7 +842,7 @@ fi
 
 cat > /etc/systemd/system/vpn-dashboard.service << EOF
 [Unit]
-Description=PS5 VPN Dashboard
+Description=$CONSOLE_NAME VPN Dashboard
 After=pia-daemon.service network-online.target
 Wants=network-online.target
 
@@ -643,23 +894,69 @@ echo "  [10/10] Starting Services"
 echo "============================================================"
 
 systemctl enable dnsmasq
-systemctl start lan-up.service
-sleep 2
+
+echo "  Starting lan-up service..."
+systemctl start lan-up.service 2>/dev/null &
+sleep 3
+
+echo "  Configuring LAN interface ($LAN_IF)..."
+if ! ip addr show "$LAN_IF" 2>/dev/null | grep -q "10.99.99.1"; then
+  nmcli device set "$LAN_IF" managed no 2>/dev/null || true
+  ip addr flush dev "$LAN_IF" 2>/dev/null || true
+  ip link set "$LAN_IF" up 2>/dev/null || true
+  ip addr add 10.99.99.1/24 dev "$LAN_IF" 2>/dev/null || true
+fi
+
+echo "  Starting DHCP/DNS server (dnsmasq)..."
 systemctl start dnsmasq
 sleep 1
-systemctl restart vpn-fw.service
+
+echo "  Starting firewall + kill switch..."
+systemctl restart vpn-fw.service 2>/dev/null || true
 sleep 1
-systemctl start pia-connect.service
-sleep 5
+
+echo "  Starting PIA auto-connect..."
+systemctl start pia-connect.service 2>/dev/null &
+sleep 2
+
+echo "  Waiting for VPN to connect (this can take 30-60 seconds)..."
+VPN_WAIT_SPINNER="|/-\\"
+for i in $(seq 1 30); do
+  VPN_STATE=$(piactl get connectionstate 2>/dev/null || echo "Unknown")
+  if [ "$VPN_STATE" = "Connected" ]; then
+    echo -e "\r  VPN status: Connected!                    "
+    break
+  fi
+  printf "\r  VPN status: %s (waiting... %s) " "$VPN_STATE" "${VPN_WAIT_SPINNER:$((i%4)):1}"
+  sleep 2
+done
+echo ""
+
+echo "  Starting web dashboard..."
 systemctl start vpn-dashboard
 sleep 2
 
-echo "  lan-up:         $(systemctl is-active lan-up)"
-echo "  dnsmasq:        $(systemctl is-active dnsmasq)"
-echo "  pia-daemon:     $(systemctl is-active pia-daemon 2>/dev/null || systemctl is-active private-internet-access 2>/dev/null)"
-echo "  pia-connect:    $(systemctl is-active pia-connect)"
-echo "  vpn-fw:         $(systemctl is-active vpn-fw)"
-echo "  vpn-dashboard:  $(systemctl is-active vpn-dashboard)"
+echo ""
+echo "  Service status:"
+echo "    lan-up:         $(systemctl is-active lan-up 2>/dev/null)"
+echo "    dnsmasq:        $(systemctl is-active dnsmasq 2>/dev/null)"
+echo "    pia-daemon:     $(systemctl is-active pia-daemon 2>/dev/null || systemctl is-active private-internet-access 2>/dev/null)"
+echo "    pia-connect:    $(systemctl is-active pia-connect 2>/dev/null)"
+echo "    vpn-fw:         $(systemctl is-active vpn-fw 2>/dev/null)"
+echo "    vpn-dashboard:  $(systemctl is-active vpn-dashboard 2>/dev/null)"
+
+# Final VPN status check
+VPN_STATE=$(piactl get connectionstate 2>/dev/null || echo "Unknown")
+echo ""
+if [ "$VPN_STATE" = "Connected" ]; then
+  VPN_IP=$(curl -s --max-time 5 https://ifconfig.me 2>/dev/null || echo "unknown")
+  echo "  >>> VPN connected successfully! (IP: $VPN_IP)"
+else
+  echo "  >>> NOTE: VPN not yet connected (state: $VPN_STATE)"
+  echo "  >>> If it doesn't connect within a minute, run:"
+  echo "  >>>   piactl background enable && piactl connect"
+  echo "  >>> Or reboot: sudo reboot"
+fi
 
 # ============================================================
 # DONE
@@ -670,7 +967,7 @@ echo "  Installation Complete!"
 echo "============================================================"
 echo ""
 echo "AUTHOR: Daniel Smyth"
-echo "GITHUB: https://github.com/daniel-smyth09/PS5-VPN-Dashboard"
+echo "GITHUB: https://github.com/daniel-smyth09/Playstation-Xbox-VPN-Dashboard"
 echo ""
 echo "------------------------------------------------------------"
 echo "  HARDWARE WIRING (final check)"
@@ -678,13 +975,13 @@ echo "------------------------------------------------------------"
 echo ""
 echo "  Make sure everything is plugged in like this:"
 echo ""
-echo "     ROUTER  ====ethernet====  [onboard port]  PI 5  [USB 3.0 port]====USB-Eth adapter====ethernet====  PS5"
+echo "     ROUTER  ====ethernet====  [onboard port]  PI 5  [USB 3.0 port]====USB-Eth adapter====ethernet====  $CONSOLE_NAME"
 echo "                                                                 (blue)"
 echo ""
 echo "  - Router to Pi: use the Pi's BUILT-IN Ethernet port"
 echo "    (the one next to the USB ports, NOT a USB adapter)"
-echo "  - Pi to PS5: USB-Ethernet adapter plugged into a BLUE"
-echo "    USB 3.0 port, then Ethernet cable to the PS5"
+echo "  - Pi to console: USB-Ethernet adapter plugged into a BLUE"
+echo "    USB 3.0 port, then Ethernet cable to your console"
 echo ""
 echo "------------------------------------------------------------"
 echo "  DASHBOARD"
@@ -706,27 +1003,27 @@ echo "------------------------------------------------------------"
 echo "  VERIFY THE VPN IS WORKING"
 echo "------------------------------------------------------------"
 echo ""
-echo "  1. On your PS5: Settings -> Network -> Test Internet Connection"
+echo "  1. On your $CONSOLE_NAME: Settings -> Network -> Test Internet Connection"
 echo "     It should succeed and show a download speed."
 echo ""
-echo "  2. On your PS5 web browser, open:  https://ipleak.net"
+echo "  2. On your $CONSOLE_NAME web browser, open:  https://ipleak.net"
 echo "     - Your IP should show Netherlands (or your chosen region)"
 echo "     - There should be NO mention of your real ISP (e.g. Virgin)"
 echo "     - DNS servers should be Cloudflare (1.1.1.1)"
 echo ""
 echo "  3. In the dashboard, tap 'Test Kill Switch'"
 echo "     - Should show a green tick: Kill switch working"
-echo "     - This confirms the PS5 is protected if VPN drops"
+echo "     - This confirms the $CONSOLE_NAME is protected if VPN drops"
 echo ""
 echo "------------------------------------------------------------"
 echo "  TROUBLESHOOTING"
 echo "------------------------------------------------------------"
 echo ""
-echo "  PS5 can't get internet:"
+echo "  $CONSOLE_NAME can't get internet:"
 echo "    piactl get connectionstate    (must say 'Connected')"
 echo "    sudo journalctl -u pia-connect -f   (watch VPN connect)"
 echo ""
-echo "  PS5 can't get an IP address:"
+echo "  $CONSOLE_NAME can't get an IP address:"
 echo "    sudo systemctl restart lan-up dnsmasq"
 echo "    sudo journalctl -u dnsmasq -f"
 echo ""
@@ -751,11 +1048,11 @@ echo ""
 echo "    sudo reboot"
 echo ""
 echo "  After reboot, wait ~90 seconds for the VPN to connect"
-echo "  automatically, then test on the PS5."
+echo "  automatically, then test on the $CONSOLE_NAME."
 echo ""
 echo "============================================================"
-echo "  Thanks for using the PS5 VPN Gateway!"
+echo "  Thanks for using the VPN Gateway!"
 echo "  Author: Daniel Smyth"
-echo "  https://github.com/daniel-smyth09/PS5-VPN-Dashboard"
+echo "  https://github.com/daniel-smyth09/Playstation-Xbox-VPN-Dashboard"
 echo "============================================================"
 echo ""

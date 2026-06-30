@@ -12,9 +12,11 @@ DATA_STATS_FILE = '/var/lib/vpn-dashboard/data-stats.json'
 CONFIG_FILE = '/etc/vpn-dashboard.conf'
 
 def _read_config():
-    global LAN_IF, WAN_IF
+    global LAN_IF, WAN_IF, CONSOLE_NAME, CONSOLE_FAMILY
     LAN_IF = 'eth1'
     WAN_IF = 'eth0'
+    CONSOLE_NAME = 'PS5'
+    CONSOLE_FAMILY = 'playstation'
     try:
         with open(CONFIG_FILE) as f:
             for line in f:
@@ -22,10 +24,26 @@ def _read_config():
                     k, v = line.strip().split('=', 1)
                     if k.strip() == 'LAN_IF': LAN_IF = v.strip()
                     elif k.strip() == 'WAN_IF': WAN_IF = v.strip()
+                    elif k.strip() == 'CONSOLE_NAME': CONSOLE_NAME = v.strip()
+                    elif k.strip() == 'CONSOLE_FAMILY': CONSOLE_FAMILY = v.strip()
     except:
         pass
 
 _read_config()
+
+def _gaming_server():
+    if CONSOLE_FAMILY == 'xbox':
+        return 'xboxlive.com', 'Xbox Live Network', 'Xbox Live'
+    return 'ps5.np.playstation.net', 'PlayStation Network (PSN)', 'PSN'
+
+def _console_logo():
+    if CONSOLE_FAMILY == 'xbox':
+        return ('<svg width="24" height="24" viewBox="0 0 372.37 372.57" style="vertical-align:middle">'
+                '<path fill="#107c10" d="M 169.19,359.45 C 140.51,356.70 111.47,346.40 86.52,330.13 C 65.61,316.49 60.89,310.88 60.89,299.69 C 60.89,277.22 85.61,237.85 127.89,192.97 C 151.90,167.49 185.35,137.61 188.97,138.42 C 196.00,139.99 252.22,194.83 273.26,220.65 C 306.54,261.47 321.84,294.89 314.07,309.79 C 308.16,321.12 271.50,343.26 244.56,351.77 C 222.36,358.78 193.21,361.75 169.19,359.45 Z M 32.66,276.32 C 15.29,249.67 6.51,223.44 2.28,185.49 C 0.88,172.96 1.38,165.79 5.45,140.07 C 10.53,108.02 28.78,70.93 50.72,48.11 C 60.06,38.39 60.89,38.16 72.28,42.00 C 86.11,46.65 100.88,56.85 123.78,77.56 L 137.14,89.65 L 129.84,98.61 C 95.97,140.22 60.22,199.21 46.74,235.70 C 39.42,255.54 36.46,275.45 39.61,283.74 C 41.74,289.34 39.79,287.25 32.66,276.32 Z M 337.58,280.86 C 339.29,272.48 337.12,257.09 332.03,241.58 C 321.02,207.97 284.19,145.45 250.38,102.95 L 239.74,89.56 L 251.25,78.99 C 266.29,65.18 276.73,56.92 287.99,49.90 C 296.88,44.36 309.58,39.45 315.04,39.45 C 318.41,39.45 330.26,51.75 339.83,65.17 C 354.65,85.96 365.55,111.16 371.07,137.39 C 374.64,154.34 374.94,190.62 371.65,207.53 C 368.95,221.41 363.24,239.40 357.68,251.61 C 353.51,260.76 343.14,278.52 338.60,284.30 C 336.26,287.27 336.27,287.27 337.58,280.86 Z M 172.26,33.10 C 156.66,25.18 132.59,16.68 119.29,14.39 C 114.63,13.59 106.68,13.14 101.62,13.39 C 90.65,13.95 91.14,13.38 108.74,5.06 C 123.37,-1.85 135.57,-5.92 152.14,-9.40 C 170.78,-13.31 205.81,-13.35 224.15,-9.49 C 243.95,-5.31 267.28,3.37 280.42,11.46 L 284.33,13.86 L 275.37,13.41 C 257.56,12.51 231.60,19.71 203.73,33.27 C 195.33,37.36 188.01,40.63 187.48,40.53 C 186.95,40.43 180.10,37.09 172.26,33.10 Z"/>'
+                '</svg>')
+    return ('<svg width="32" height="24" viewBox="0 0 200 154.82" style="vertical-align:middle">'
+            '<path fill="#003791" d="m 197.24,117.96 c -3.87,4.88 -13.34,8.36 -13.34,8.36 0,0 -70.49,25.32 -70.49,25.32 0,0 0,-18.67 0,-18.67 0,0 51.88,-18.48 51.88,-18.48 5.89,-2.11 6.79,-5.09 2.01,-6.66 -4.78,-1.57 -13.42,-1.12 -19.32,1.00 0,0 -34.57,12.17 -34.57,12.17 0,0 0,-19.38 0,-19.38 0,0 1.99,-0.67 1.99,-0.67 0,0 9.99,-3.53 24.03,-5.09 14.05,-1.55 31.24,0.21 44.74,5.33 15.21,4.81 16.93,11.90 13.07,16.77 z M 120.11,86.17 c 0,0 0,-47.75 0,-47.75 0,-5.61 -1.03,-10.77 -6.30,-12.23 -4.03,-1.29 -6.53,2.45 -6.53,8.05 0,0 0,119.58 0,119.58 0,0 -32.25,-10.24 -32.25,-10.24 0,0 0,-142.58 0,-142.58 13.71,2.55 33.69,8.56 44.43,12.18 27.31,9.38 36.57,21.05 36.57,47.34 0,25.63 -15.82,35.34 -35.92,25.65 z M 15.86,131.02 C 0.24,126.62 -2.36,117.45 4.76,112.17 c 6.58,-4.88 17.77,-8.54 17.77,-8.54 0,0 46.24,-16.44 46.24,-16.44 0,0 0,18.74 0,18.74 0,0 -33.28,11.91 -33.28,11.91 -5.88,2.11 -6.78,5.10 -2.01,6.66 4.78,1.57 13.43,1.12 19.32,-0.99 0,0 15.96,-5.79 15.96,-5.79 0,0 0,16.77 0,16.77 -1.01,0.18 -2.14,0.36 -3.18,0.54 -15.97,2.61 -32.97,1.52 -49.72,-4.01 z"/>'
+            '</svg>')
 
 _net = {'rx': None, 'tx': None, 'ts': 0}
 _cpu = {'idle': 0, 'total': 0}
@@ -54,8 +72,15 @@ def sh(cmd, t=10):
     except:
         return ''
 
+_pia_bg_enabled = False
 def pia(*a):
     return sh(['piactl'] + list(a))
+
+def _ensure_background():
+    global _pia_bg_enabled
+    if not _pia_bg_enabled:
+        sh(['piactl', 'background', 'enable'])
+        _pia_bg_enabled = True
 
 def get_ip():
     with _lock:
@@ -69,6 +94,24 @@ def get_ip():
             _ip['ts'] = now
         return ip
     return _ip['v'] or ''
+
+_auto_loc = {'ip': None, 'region': None, 'ts': 0}
+def _get_auto_location(ip):
+    if not ip:
+        return 'auto'
+    now = time.time()
+    if _auto_loc['ip'] == ip and now - _auto_loc['ts'] < 300:
+        return _auto_loc['region'] or 'auto'
+    geo = sh(f'curl -s --max-time 3 http://ip-api.com/line/{ip}?fields=city,country 2>/dev/null')
+    loc = 'auto'
+    if geo:
+        parts = geo.strip().split('\n')
+        if len(parts) >= 2:
+            loc = f"{parts[0]}, {parts[1]} (auto)"
+        elif len(parts) == 1 and parts[0]:
+            loc = f"{parts[0]} (auto)"
+    _auto_loc.update(ip=ip, region=loc, ts=now)
+    return loc
 
 def net_bytes():
     try:
@@ -219,7 +262,8 @@ def _data_stats_loop():
 def _latmon_loop():
     while _latmon['running']:
         try:
-            out = sh('ping -c 1 -W 3 ps5.np.playstation.net', t=5)
+            server, _, _ = _gaming_server()
+            out = sh(f'ping -c 1 -W 3 {server}', t=5)
             m = re.search(r'time=([\d.]+)', out)
             ms = float(m.group(1)) if m else None
             _latmon['values'].append({'ts': time.time(), 'ms': ms})
@@ -378,7 +422,8 @@ def _generate_icon(size=512):
 # ============================================================
 @app.route('/')
 def index():
-    return PAGE
+    server, net_label, net_short = _gaming_server()
+    return PAGE.replace('__CONSOLE__', CONSOLE_NAME).replace('__LOGO__', _console_logo()).replace('__LAT_BTN__', 'Test Latency to '+net_label).replace('__LAT_NET__', net_short)
 
 @app.route('/api/status')
 def api_status():
@@ -390,6 +435,10 @@ def api_status():
     ip = get_ip() if state == 'Connected' and up else ''
     rx, tx = net_bytes()
     conn_time = (time.time() - connected_since) if connected_since and state == 'Connected' else 0
+    # If region is "auto", resolve the location (cached, only fetch every 5 min)
+    display_region = region
+    if region == 'auto' and state == 'Connected' and up:
+        display_region = _get_auto_location(ip)
     ps5_ip = ''
     try:
         with open('/var/lib/misc/dnsmasq.leases') as f:
@@ -400,7 +449,7 @@ def api_status():
     except:
         pass
     return jsonify({
-        'state': state, 'region': region, 'protocol': proto,
+        'state': state, 'region': display_region, 'protocol': proto,
         'pubip': ip, 'vpn_up': up, 'ps5_ip': ps5_ip,
         'total_rx': fmt_b(rx) if rx else '0 B', 'total_tx': fmt_b(tx) if tx else '0 B',
         'connection_time': fmt_up(conn_time),
@@ -416,6 +465,13 @@ def api_regions():
     return jsonify({'regions': [r.strip() for r in out.split('\n') if r.strip()], 'current': cur, 'favorites': _state.get('favorites', [])})
 
 @app.route('/api/connect', methods=['POST'])
+def _do_reconnect():
+    """Disconnect and reconnect, waiting for VPN to come back up."""
+    pia('disconnect')
+    time.sleep(2)
+    pia('connect')
+
+@app.route('/api/connect', methods=['POST'])
 def api_connect():
     pia('connect'); return jsonify({'ok': True})
 
@@ -425,13 +481,16 @@ def api_disconnect():
 
 @app.route('/api/reconnect', methods=['POST'])
 def api_reconnect():
-    pia('disconnect'); time.sleep(2); pia('connect'); return jsonify({'ok': True})
+    threading.Thread(target=_do_reconnect, daemon=True).start()
+    return jsonify({'ok': True})
 
 @app.route('/api/region', methods=['POST'])
 def api_set_region():
     r = request.get_json().get('region', '')
     pia('set', 'region', r)
     _state['last_region'] = r; _save_state()
+    # Reconnect in background to apply new region
+    threading.Thread(target=_do_reconnect, daemon=True).start()
     return jsonify({'ok': True})
 
 @app.route('/api/favorite', methods=['POST'])
@@ -447,7 +506,7 @@ def api_favorite():
 def api_quick_reconnect():
     last = _state.get('last_region') or pia('get', 'region')
     pia('set', 'region', last)
-    pia('disconnect'); time.sleep(2); pia('connect')
+    threading.Thread(target=_do_reconnect, daemon=True).start()
     return jsonify({'ok': True, 'region': last})
 
 @app.route('/api/autoconnect', methods=['POST'])
@@ -519,7 +578,7 @@ def api_clients():
             for l in f:
                 p = l.strip().split()
                 if len(p) >= 4:
-                    out.append({'mac': p[1], 'ip': p[2], 'name': p[3] if p[3] != '*' else 'PS5'})
+                    out.append({'mac': p[1], 'ip': p[2], 'name': p[3] if p[3] != '*' else CONSOLE_NAME})
     except: pass
     return jsonify({'clients': out})
 
@@ -598,31 +657,43 @@ def _run_speedtest():
     try:
         _speedtest['running'] = True; _speedtest['result'] = None; _speedtest['error'] = None
         if sh('command -v speedtest-cli'):
-            out = sh('speedtest-cli --json 2>&1', t=120)
+            out = sh('speedtest-cli --json --simple 2>&1', t=120)
             if not out:
                 _speedtest['error'] = 'No output (timed out)'
                 return
-            data = json.loads(out)
+            # speedtest-cli sometimes outputs warnings before JSON, find the JSON
+            json_start = out.find('{')
+            if json_start < 0:
+                _speedtest['error'] = f'No JSON in output: {out[:200]}'
+                return
+            data = json.loads(out[json_start:])
             srv = data.get('server', {})
             client = data.get('client', {})
+            raw_dl = data.get('download', 0)
+            raw_ul = data.get('upload', 0)
+            raw_ping = data.get('ping', 0)
             _speedtest['result'] = {
-                'download': round(data.get('download', 0) / 1e6, 1),
-                'upload': round(data.get('upload', 0) / 1e6, 1),
-                'ping': round(data.get('ping', 0), 1),
+                'download': round(raw_dl / 1e6, 1),
+                'upload': round(raw_ul / 1e6, 1),
+                'ping': min(round(raw_ping, 1), 9999),
                 'server': f"{srv.get('sponsor', srv.get('name', '?'))}, {srv.get('country', '?')}",
-                'isp': client.get('isp', ''),
+                'isp': client.get('isp', '') or client.get('ip', ''),
             }
         elif sh('command -v speedtest'):
             out = sh('speedtest --format=json --accept-license --accept-gdpr 2>&1', t=120)
             if not out:
                 _speedtest['error'] = 'No output (timed out)'
                 return
-            data = json.loads(out)
+            json_start = out.find('{')
+            if json_start < 0:
+                _speedtest['error'] = f'No JSON in output: {out[:200]}'
+                return
+            data = json.loads(out[json_start:])
             srv = data.get('server', {})
             _speedtest['result'] = {
                 'download': round(data.get('download', {}).get('bandwidth', 0) * 8 / 1e6, 1),
                 'upload': round(data.get('upload', {}).get('bandwidth', 0) * 8 / 1e6, 1),
-                'ping': round(data.get('ping', {}).get('latency', 0), 1),
+                'ping': min(round(data.get('ping', {}).get('latency', 0), 1), 9999),
                 'server': f"{srv.get('name', '?')}, {srv.get('location', '?')}",
                 'isp': data.get('isp', ''),
             }
@@ -652,7 +723,7 @@ def _run_killswitch_test():
         pia('disconnect'); time.sleep(4)
         rules = sh('iptables -S FORWARD')
         has_rule = any('DROP' in l and (LAN_IF in l or 'wlan0' in l) and WAN_IF in l for l in rules.split('\n'))
-        _ks_test['result'] = {'passed': has_rule, 'message': '\u2705 Kill switch working - PS5 protected' if has_rule else '\u274c Kill switch rule missing!'}
+        _ks_test['result'] = {'passed': has_rule, 'message': '\u2705 Kill switch working - '+CONSOLE_NAME+' protected' if has_rule else '\u274c Kill switch rule missing!'}
         pia('connect'); time.sleep(2)
     except Exception as e:
         _ks_test['error'] = str(e)
@@ -715,12 +786,13 @@ def api_dnsleak_status():
 def _run_latency():
     try:
         _latency['running'] = True; _latency['result'] = None; _latency['error'] = None
-        out = sh('ping -c 5 -I wgpia0 ps5.np.playstation.net', t=20)
+        server, _, label = _gaming_server()
+        out = sh(f'ping -c 5 -I wgpia0 {server}', t=20)
         m = re.search(r'rtt min/avg/max/mdev = [\d.]+/([\d.]+)/', out)
         mloss = re.search(r'(\d+)% packet loss', out)
         avg = float(m.group(1)) if m else 0
         loss = int(mloss.group(1)) if mloss else 0
-        _latency['result'] = {'latency_ms': round(avg, 1), 'packet_loss': loss, 'target': 'PSN'}
+        _latency['result'] = {'latency_ms': round(avg, 1), 'packet_loss': loss, 'target': label}
     except Exception as e:
         _latency['error'] = str(e)
     finally:
@@ -780,7 +852,7 @@ def api_qr():
 # ============================================================
 @app.route('/manifest.json')
 def manifest():
-    return jsonify({'name': 'PS5 VPN Dashboard', 'short_name': 'PS5 VPN', 'start_url': '/',
+    return jsonify({'name': CONSOLE_NAME+' VPN Dashboard', 'short_name': CONSOLE_NAME+' VPN', 'start_url': '/',
         'display': 'standalone', 'background_color': '#0d1117', 'theme_color': '#0d1117',
         'icons': [{'src': '/icon/192.png', 'sizes': '192x192', 'type': 'image/png'},
                   {'src': '/icon/512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any maskable'}]})
@@ -809,12 +881,12 @@ PAGE = '''<!DOCTYPE html>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="PS5 VPN">
+<meta name="apple-mobile-web-app-title" content="__CONSOLE__ VPN">
 <meta name="theme-color" content="#0d1117">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="/icon/192.png">
-<title>PS5 VPN Dashboard</title>
+<title>__CONSOLE__ VPN Dashboard</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--dim:#7d8590;--green:#3fb950;--red:#f85149;--blue:#58a6ff;--amber:#d29922;--gold:#e3b341}
@@ -824,6 +896,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .span-2{grid-column:1/-1}
 .header{text-align:center;padding:12px 0 4px}
 .header h1{font-size:22px;font-weight:700}
+.console-logo{display:inline-flex;vertical-align:middle;margin-right:6px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
 .card h3{font-size:12px;font-weight:600;margin-bottom:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;justify-content:space-between}
 .status-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
@@ -909,7 +982,7 @@ canvas{width:100%;height:70px;display:block;margin:6px 0}
 </style>
 </head>
 <body>
-<div class="header"><h1>PS5 VPN Dashboard <span id="headerStatus"></span></h1></div>
+<div class="header"><h1><span class="console-logo">__LOGO__</span> __CONSOLE__ VPN Dashboard <span id="headerStatus"></span></h1></div>
 <div class="grid">
 
   <div class="card">
@@ -962,9 +1035,9 @@ canvas{width:100%;height:70px;display:block;margin:6px 0}
   </div>
 
   <div class="card">
-    <h3>Gaming Latency <span style="text-transform:none;font-weight:400;font-size:11px">to PSN</span></h3>
-    <div class="latency-box" id="latBox"><div class="latency-val" id="latencyVal">&mdash;</div><div class="speed-unit" id="latencyTarget">ms to PSN</div></div>
-    <button class="btn btn-rec btn-full" id="btnLatency" onclick="runLatency()">Test PSN Latency</button>
+    <h3>Gaming Latency <span style="text-transform:none;font-weight:400;font-size:11px">to gaming network</span></h3>
+    <div class="latency-box" id="latBox"><div class="latency-val" id="latencyVal">&mdash;</div><div class="speed-unit" id="latencyTarget">ms to <span id="latTarget">__LAT_NET__</span></div></div>
+    <button class="btn btn-rec btn-full" id="btnLatency" onclick="runLatency()">__LAT_BTN__</button>
     <canvas id="latChart" style="display:none;margin:8px 0;width:100%;height:160px"></canvas>
     <div class="toggle-row"><span>Live Monitor</span><div class="toggle" id="latmonToggle" onclick="toggleLatmon()"></div></div>
   </div>
@@ -1024,7 +1097,7 @@ canvas{width:100%;height:70px;display:block;margin:6px 0}
   </div>
 
   <div class="card span-2">
-    <h3>PS5 Traffic Sniffer <span id="sniffStatus" style="text-transform:none;font-weight:400;font-size:11px;color:var(--dim)"></span></h3>
+    <h3>__CONSOLE__ Traffic Sniffer <span id="sniffStatus" style="text-transform:none;font-weight:400;font-size:11px;color:var(--dim)"></span></h3>
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <button class="btn btn-go" id="btnSniffStart" onclick="startSniff()" style="flex:1">Start Sniffing</button>
       <button class="btn btn-stop" id="btnSniffStop" onclick="stopSniff()" style="flex:1;display:none">Stop Sniffing</button>
@@ -1038,10 +1111,11 @@ canvas{width:100%;height:70px;display:block;margin:6px 0}
   </div>
 
 </div>
-<div class="footer">PS5 VPN Dashboard</div>
+<div class="footer">__CONSOLE__ VPN Dashboard</div>
 <div class="toast" id="toast"></div>
 
 <script>
+const CONSOLE_NAME='__CONSOLE__';
 const $=id=>document.getElementById(id);
 async function api(p,o={}){try{return await(await fetch(p,o)).json()}catch(e){return{}}}
 function toast(m){const t=$('toast');t.textContent=m;t.className='toast show';clearTimeout(t._t);t._t=setTimeout(()=>t.className='toast',3e3)}
@@ -1058,8 +1132,8 @@ async function refreshStatus(){
   $('dot').className='dot '+(on?'on':wait?'wait':'off');
   $('state').textContent=s.state;$('region').textContent=prettyRegion(s.region)||'\u2014';
   $('ip').textContent=s.pubip||'\u2014';$('proto').textContent=prettyProto(s.protocol)||'\u2014';
-    if(s.ps5_ip){$('headerStatus').innerHTML=' - <span class="dot on" style="display:inline-block;vertical-align:middle;margin:0 4px"></span><span style="color:var(--green)">PS5 Connected - '+s.ps5_ip+'</span>'}
-  else{$('headerStatus').innerHTML=' - <span class="dot off" style="display:inline-block;vertical-align:middle;margin:0 4px"></span><span style="color:var(--red)">PS5 NOT Connected</span>'}
+    if(s.ps5_ip){$('headerStatus').innerHTML=' - <span class="dot on" style="display:inline-block;vertical-align:middle;margin:0 4px"></span><span style="color:var(--green)">'+CONSOLE_NAME+' Connected - '+s.ps5_ip+'</span>'}
+  else{$('headerStatus').innerHTML=' - <span class="dot off" style="display:inline-block;vertical-align:middle;margin:0 4px"></span><span style="color:var(--red)">'+CONSOLE_NAME+' NOT Connected</span>'}
   $('connTime').textContent=s.connection_time||'\u2014';
   $('tRx').textContent=s.total_rx;$('tTx').textContent=s.total_tx;
   $('btnGo').disabled=on||wait;$('btnStop').disabled=!on;$('btnRec').disabled=!on&&!wait;
@@ -1067,7 +1141,7 @@ async function refreshStatus(){
   $('dailyToggle').className='toggle '+(s.daily_reconnect?'on':'');
   $('reconnectHourRow').style.display=s.daily_reconnect?'block':'none';
   if(s.daily_reconnect&&!$('reconnectHour').options.length){for(let h=0;h<24;h++){$('reconnectHour').add(new Option(h+':00',h))}$('reconnectHour').value=s.reconnect_hour}
-  if(_lastState==='Connected'&&s.state==='Disconnected'){notify('VPN Disconnected','Your PS5 VPN has disconnected!')}
+  if(_lastState==='Connected'&&s.state==='Disconnected'){notify('VPN Disconnected','Your '+CONSOLE_NAME+' VPN has disconnected!')}
   if(_lastState!=='Connected'&&s.state==='Connected'){notify('VPN Connected','Connected via '+prettyRegion(s.region))}
   _lastState=s.state;
 }
@@ -1109,8 +1183,8 @@ async function pollKillswitch(){const s=await api('/api/killswitch-status');if(s
 async function runDnsLeak(){$('btnDns').disabled=true;$('btnDns').textContent='Testing...';$('dnsResult').innerHTML='<div style="color:var(--amber)">Checking DNS...</div>';await api('/api/dnsleak/start',{method:'POST'});pollDns()}
 async function pollDns(){const s=await api('/api/dnsleak/status');if(s.running){setTimeout(pollDns,2e3);return}$('btnDns').disabled=false;$('btnDns').textContent='Test DNS Leak';if(s.error){$('dnsResult').innerHTML='<div style="color:var(--red)">Error: '+s.error+'</div>';return}if(s.result){const col=s.result.status==='pass'?'var(--green)':s.result.status==='warn'?'var(--amber)':'var(--red)';$('dnsResult').innerHTML='<div style="color:'+col+';font-size:14px;font-weight:600;margin-bottom:8px">'+s.result.message+'</div><div class="detail-row"><span>DNS Server</span><span>'+s.result.dns_server+'</span></div><div class="detail-row"><span>PIA DNS</span><span>'+(s.result.pia_reachable?'Reachable':'Not reachable')+'</span></div><div class="detail-row"><span>dnsmasq</span><span>'+(s.result.uses_pia?'Forwards to PIA':'Custom config')+'</span></div>'}}
 
-async function runLatency(){$('btnLatency').disabled=true;$('btnLatency').textContent='Pinging...';$('latencyVal').textContent='...';await api('/api/latency',{method:'POST'});pollLatency()}
-async function pollLatency(){const s=await api('/api/latency/status');if(s.running){setTimeout(pollLatency,2e3);return}$('btnLatency').disabled=false;$('btnLatency').textContent='Test PSN Latency';if(s.error){$('latencyVal').textContent='ERR';$('latencyTarget').textContent=s.error;return}if(s.result){$('latencyVal').textContent=s.result.latency_ms;$('latencyTarget').textContent='ms to '+s.result.target+(s.result.packet_loss?' ('+s.result.packet_loss+'% loss)':'')}}
+async function runLatency(){$('btnLatency').disabled=true;$('btnLatency').setAttribute('data-original',$('btnLatency').textContent);$('btnLatency').textContent='Pinging...';$('latencyVal').textContent='...';await api('/api/latency',{method:'POST'});pollLatency()}
+async function pollLatency(){const s=await api('/api/latency/status');if(s.running){setTimeout(pollLatency,2e3);return}$('btnLatency').disabled=false;var orig=$('btnLatency').getAttribute('data-original');if(orig){$('btnLatency').textContent=orig}if(s.error){$('latencyVal').textContent='ERR';$('latTarget').textContent=s.error;return}if(s.result){$('latencyVal').textContent=s.result.latency_ms;$('latTarget').textContent=s.result.target+(s.result.packet_loss?' ('+s.result.packet_loss+'% loss)':'')}}
 
 let _latmonOn=false;
 async function toggleLatmon(){_latmonOn=!_latmonOn;$('latmonToggle').className='toggle '+(_latmonOn?'on':'');$('latChart').style.display=_latmonOn?'block':'none';$('latBox').style.display=_latmonOn?'none':'block';$('btnLatency').style.display=_latmonOn?'none':'block';if(_latmonOn){await api('/api/latmon/start',{method:'POST'});pollLatmon()}else{await api('/api/latmon/stop',{method:'POST'})}}
@@ -1144,6 +1218,7 @@ setInterval(()=>safe(refreshStatus,'status')(),3e3);setInterval(()=>safe(refresh
 </html>'''
 
 # Start background threads
+_ensure_background()
 _load_state()
 _load_data_stats()
 if _state.get('autoconnect') and not (_watchdog['thread'] and _watchdog['thread'].is_alive()):
