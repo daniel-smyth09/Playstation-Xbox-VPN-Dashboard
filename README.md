@@ -1,6 +1,6 @@
 # Playstation/Xbox VPN PIA Dashboard
 
-A complete, self-contained installer that turns a Raspberry Pi into a VPN gateway for your **PlayStation** (PS4/PS5) or **Xbox** (Series S/Series X). All console traffic is encrypted and routed through Private Internet Access (PIA) — and nothing else on your network is affected.
+A complete, self-contained installer that turns a Raspberry Pi into a VPN gateway for your **PlayStation** (PS4/PS5) or **Xbox** (Series S/Series X). All console traffic is encrypted and routed through Private Internet Access (PIA) > and nothing else on your network is affected.
 
 **Author:** Daniel Smyth  
 **GitHub:** [daniel-smyth09/Playstation-Xbox-VPN-Dashboard](https://github.com/daniel-smyth09/Playstation-Xbox-VPN-Dashboard)
@@ -43,29 +43,29 @@ Internet ←→ Router ←(eth)→ Pi ←(USB eth)→ Console
 
 ### 1. Raspberry Pi (Pi 5 strongly recommended)
 
-The **[Raspberry Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/)** is strongly recommended because its CPU can push ~800 Mbps through WireGuard — fast enough to saturate most home internet connections.
+The **[Raspberry Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/)** is strongly recommended because its CPU can push ~800 Mbps through WireGuard > fast enough to saturate most home internet connections.
 
 The Pi 4 also works but caps out around ~300 Mbps through the VPN. Either way, you also need:
 
-- **Official Pi power supply** (5V 5A for Pi 5, 5V 3A for Pi 4 — third-party chargers cause stability issues)
+- **Official Pi power supply** (5V 5A for Pi 5, 5V 3A for Pi 4 > third-party chargers cause stability issues)
 - **MicroSD card** (16GB+, Class 10 or A2 speed)
-- **Active cooler** for the Pi 5 (the official cooler or a small fan — the Pi throttles without it)
+- **Active cooler** for the Pi 5 (the official cooler or a small fan > the Pi throttles without it)
 
 ### 2. USB 3.0 Gigabit Ethernet Adapter
 
-This is the critical component — it becomes the LAN port that connects to your console (PS5, Xbox, etc.). You **must** use a USB 3.0 Gigabit adapter with the **ASIX AX88179 chipset** for reliable gigabit speeds on the Pi.
+This is the critical component > it becomes the LAN port that connects to your console (PS5, Xbox, etc.). You **must** use a USB 3.0 Gigabit adapter with the **ASIX AX88179 chipset** for reliable gigabit speeds on the Pi.
 
-**Recommended (UK):** [UGREEN USB 3.0 Gigabit Ethernet Adapter](https://www.amazon.co.uk/UGREEN-Ethernet-Aluminum-Internet-Compatible-Sliver/dp/B07M91X2NW) — this is the exact model tested and confirmed working at full gigabit speeds.
+**Recommended (UK):** [UGREEN USB 3.0 Gigabit Ethernet Adapter](https://www.amazon.co.uk/UGREEN-Ethernet-Aluminum-Internet-Compatible-Sliver/dp/B07M91X2NW) > this is the exact model tested and confirmed working at full gigabit speeds.
 
 Alternatives with the same ASIX AX88179 chipset:
 - Cable Matters USB 3.0 to Gigabit Ethernet
 - Plugable USB 3.0 Gigabit Ethernet (USBC-E1000)
 
-⚠️ **Avoid:** Cheap adapters with Realtek RTL8152/RTL8153 chipsets — they work but are flaky under sustained load. Avoid anything labelled "100 Mbps" (you want Gigabit).
+⚠️ **Avoid:** Cheap adapters with Realtek RTL8152/RTL8153 chipsets > they work but are flaky under sustained load. Avoid anything labelled "100 Mbps" (you want Gigabit).
 
 ### 3. Cables & Networking
 
-- **Two Ethernet cables** (Cat 5e or Cat 6 — both come with most routers)
+- **Two Ethernet cables** (Cat 5e or Cat 6 > both come with most routers)
 - **A router with a free Ethernet port** (your existing home router is fine)
 
 ### 4. PIA VPN Account
@@ -73,9 +73,9 @@ Alternatives with the same ASIX AX88179 chipset:
 - **Sign up at [privateinternetaccess.com](https://www.privateinternetaccess.com)** if you don't have one
 - You'll need your username (email or x-prefixed) and password during install
 
-> 💵 **Affiliate disclosure:** If you'd like to support this project, you can sign up for PIA using my affiliate link. I earn a small commission at **no extra cost to you** — PIA pays the commission, you pay the same price. If you'd prefer not to use it, the regular link above works identically.
+> 💵 **Affiliate disclosure:** If you'd like to support this project, you can sign up for PIA using my affiliate link. I earn a small commission at **no extra cost to you** > PIA pays the commission, you pay the same price. If you'd prefer not to use it, the regular link above works identically.
 >
-> **👉 [Get PIA VPN — affiliate link (supports this project)](https://www.privateinternetaccess.com/pages/buy-a-vpn/1218buyavpn?invite=U2FsdGVkX18xigjex1hWb2nhc3SLIAL9-rojYcMYzG0%2CKL4FF4d70mcKMGBfLEg9dNNnhHU)**
+> **👉 [Get PIA VPN > affiliate link (supports this project)](https://www.privateinternetaccess.com/pages/buy-a-vpn/1218buyavpn?invite=U2FsdGVkX18xigjex1hWb2nhc3SLIAL9-rojYcMYzG0%2CKL4FF4d70mcKMGBfLEg9dNNnhHU)**
 
 ---
 
@@ -92,15 +92,15 @@ Playstation-Xbox-VPN-Dashboard/
 ```
 
 The installer asks which PIA `.run` file to use:
-1. **Bundled installer** (`files/pia-linux-arm64-*.run`) — default, just press Enter
-2. **Your own installer** — download from [PIA](https://www.privateinternetaccess.com/download/linux-vpn), name it `files/piavpn.run`
+1. **Bundled installer** (`files/pia-linux-arm64-*.run`) > default, just press Enter
+2. **Your own installer** > download from [PIA](https://www.privateinternetaccess.com/download/linux-vpn), name it `files/piavpn.run`
 
 ---
 
 ## Before You Start
 
 1. **Flash Raspberry Pi OS Lite (64-bit) Bookworm** to your MicroSD card
-   - Follow the official guide: [**Raspberry Pi Documentation — Installing the OS**](https://www.raspberrypi.com/documentation/computers/getting-started.html)
+   - Follow the official guide: [**Raspberry Pi Documentation > Installing the OS**](https://www.raspberrypi.com/documentation/computers/getting-started.html)
    - Or go straight to the [Raspberry Pi Imager download](https://rpf.io/imager)
    - Click the gear icon to configure:
      - ✅ Enable SSH (use password authentication)
@@ -197,18 +197,18 @@ Takes ~5–10 minutes. At the end it prints the dashboard URL and your generated
 
 PIA doesn't offer a stable "latest" download URL, so the installer asks which `.run` file to use:
 
-**Option 1 (default) — Use the bundled installer:**
+**Option 1 (default) > Use the bundled installer:**
 - Located at `files/pia-linux-arm64-*.run`
 - Just press Enter at the prompt
 - Easiest path
 
-**Option 2 — Provide your own installer:**
+**Option 2 > Provide your own installer:**
 - Download the latest Linux ARM installer from [PIA's download page](https://www.privateinternetaccess.com/download/linux-vpn)
 - Place the `.run` file in the `files/` directory
 - Rename it to **exactly**: `piavpn.run`
 - Choose option 2 at the prompt and confirm
 
-Why not auto-download? PIA's website generates download links dynamically — there's no static "latest" URL, and building from GitHub source takes 30+ minutes on a Pi. The bundled file guarantees a working install; option 2 lets you use a newer version if you want.
+Why not auto-download? PIA's website generates download links dynamically > there's no static "latest" URL, and building from GitHub source takes 30+ minutes on a Pi. The bundled file guarantees a working install; option 2 lets you use a newer version if you want.
 
 ---
 
@@ -283,7 +283,7 @@ piactl get regions
 2. **On your console's web browser:** Open [ipleak.net](https://ipleak.net)
    - ✅ IP = PIA server (Netherlands etc.)
    - ✅ No mention of your real ISP
-   - ✅ DNS = PIA DNS (`10.0.0.243`) via tunnel — no DNS leaks
+   - ✅ DNS = PIA DNS (`10.0.0.243`) via tunnel > no DNS leaks
 
 3. **In dashboard:** Tap "Test Kill Switch"
    - Should show ✅ "Kill switch working"
@@ -296,12 +296,12 @@ piactl get regions
 | Problem | Fix |
 |---------|-----|
 | **Console can't get an IP** | `sudo systemctl restart lan-up dnsmasq` then `sudo journalctl -u dnsmasq -f` |
-| **Console connects but no internet** | `piactl get connectionstate` (must say "Connected") — check `sudo iptables -L FORWARD -n -v` |
+| **Console connects but no internet** | `piactl get connectionstate` (must say "Connected") > check `sudo iptables -L FORWARD -n -v` |
 | **VPN not auto-connecting on boot** | `sudo systemctl status pia-connect` and `sudo journalctl -u pia-connect` |
 | **Dashboard not loading** | `sudo systemctl status vpn-dashboard` and `sudo journalctl -u vpn-dashboard -f` |
 | **PIA login failed** | Run `piactl login` manually and enter your credentials |
 | **Forgot PIN** | `echo -n "1234" \| sha256sum \| awk '{print $1}' \| sudo tee /var/lib/vpn-dashboard/pin.hash` (replace `1234`) |
-| **USB adapter not detected** | `ls /sys/class/net/`, `ip link show`, `dmesg \| grep -i usb` — should appear as `eth1`, `enx...`, or `usb0` |
+| **USB adapter not detected** | `ls /sys/class/net/`, `ip link show`, `dmesg \| grep -i usb` > should appear as `eth1`, `enx...`, or `usb0` |
 | **Slow speeds** | Make sure the adapter is in a **blue USB 3.0 port** (not black USB 2.0) |
 
 ---
@@ -317,7 +317,7 @@ piactl get regions
 - Subnet: `10.99.99.0/24`
 - Pi LAN IP: `10.99.99.1`
 - Console IP range: `10.99.99.10` – `10.99.99.50` (DHCP)
-- DNS: `10.0.0.243`, `10.0.0.242` (PIA DNS, routed through tunnel — no leaks when VPN is up, no DNS at all when VPN is down = kill switch for DNS too)
+- DNS: `10.0.0.243`, `10.0.0.242` (PIA DNS, routed through tunnel > no leaks when VPN is up, no DNS at all when VPN is down = kill switch for DNS too)
 
 **Security:**
 - Kill switch: `FORWARD` chain drops anything from LAN → WAN, so if `wgpia0` drops, the console has no internet
@@ -337,7 +337,7 @@ sudo bash uninstall-vpn.sh
 
 ### What the uninstaller does
 
-The uninstaller is designed to leave your Pi in a fully working state — as if the VPN gateway was never installed. It performs these steps in order:
+The uninstaller is designed to leave your Pi in a fully working state > as if the VPN gateway was never installed. It performs these steps in order:
 
 **1. Stops and disables all services**
 - `vpn-dashboard`, `pia-connect`, `pia-daemon`, `vpn-fw`, `lan-up`, `dnsmasq`
@@ -376,14 +376,14 @@ The uninstaller gives you 3 choices:
 | Choice | What happens |
 |--------|--------------|
 | **1) Remove all** | Removes `dnsmasq`, `tcpdump`, `speedtest-cli`, `python3-flask`, `python3-qrcode`, AND PIA VPN |
-| **2) Keep packages** (default) | Leaves everything installed — useful if you plan to reinstall |
+| **2) Keep packages** (default) | Leaves everything installed > useful if you plan to reinstall |
 | **3) Remove all EXCEPT PIA** | Removes support packages but keeps PIA installed (in case you use it elsewhere) |
 
 ### Safety features
 
 - Requires root (`sudo`)
 - Requires typing **`yes`** to confirm (not just `y`)
-- Handles missing files gracefully — won't error if something's already removed
+- Handles missing files gracefully > won't error if something's already removed
 - Backs up your PIN hash before deletion
 - Restores working DNS + internet immediately
 
