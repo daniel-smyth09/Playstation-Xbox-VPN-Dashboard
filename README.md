@@ -1,6 +1,5 @@
 # Playstation/Xbox VPN PIA Dashboard
 
-<<<<<<< HEAD
 A complete, self-contained installer that turns a Raspberry Pi into a VPN gateway for your **PlayStation** (PS4/PS5) or **Xbox** (Series S/Series X). All console traffic is encrypted and routed through Private Internet Access (PIA) > and nothing else on your network is affected.
 =======
 **Version:** 1.0.1
