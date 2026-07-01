@@ -49,7 +49,8 @@ _net = {'rx': None, 'tx': None, 'ts': 0}
 _cpu = {'idle': 0, 'total': 0}
 _ip = {'v': None, 'ts': 0}
 _icon_cache = {}
-_speedtest = {'running': False, 'result': None, 'error': None}
+_speedtest = {'running': False, 'result': None, 'error': None, 'last_result': None}
+SPEEDTEST_FILE = '/var/lib/vpn-dashboard/speedtest.json'
 _ks_test = {'running': False, 'result': None, 'error': None}
 _latency = {'running': False, 'result': None, 'error': None}
 _dnsleak = {'running': False, 'result': None, 'error': None}
@@ -224,6 +225,20 @@ def _save_data_stats():
     try:
         with open(DATA_STATS_FILE, 'w') as f:
             json.dump(_data_stats, f)
+    except:
+        pass
+
+def _load_speedtest():
+    try:
+        with open(SPEEDTEST_FILE) as f:
+            _speedtest['last_result'] = json.load(f)
+    except:
+        pass
+
+def _save_speedtest():
+    try:
+        with open(SPEEDTEST_FILE, 'w') as f:
+            json.dump(_speedtest['last_result'], f)
     except:
         pass
 
@@ -657,7 +672,7 @@ def _run_speedtest():
     try:
         _speedtest['running'] = True; _speedtest['result'] = None; _speedtest['error'] = None
         if sh('command -v speedtest-cli'):
-            out = sh('speedtest-cli --json --simple 2>&1', t=120)
+            out = sh('speedtest-cli --json 2>&1', t=120)
             if not out:
                 _speedtest['error'] = 'No output (timed out)'
                 return
@@ -678,6 +693,7 @@ def _run_speedtest():
                 'ping': min(round(raw_ping, 1), 9999),
                 'server': f"{srv.get('sponsor', srv.get('name', '?'))}, {srv.get('country', '?')}",
                 'isp': client.get('isp', '') or client.get('ip', ''),
+                'ts': time.time(),
             }
         elif sh('command -v speedtest'):
             out = sh('speedtest --format=json --accept-license --accept-gdpr 2>&1', t=120)
@@ -696,12 +712,16 @@ def _run_speedtest():
                 'ping': min(round(data.get('ping', {}).get('latency', 0), 1), 9999),
                 'server': f"{srv.get('name', '?')}, {srv.get('location', '?')}",
                 'isp': data.get('isp', ''),
+                'ts': time.time(),
             }
         else:
             _speedtest['error'] = 'speedtest not installed. Run on Pi: sudo apt install -y speedtest-cli'
     except Exception as e:
         _speedtest['error'] = str(e)
     finally:
+        if _speedtest['result']:
+            _speedtest['last_result'] = _speedtest['result']
+            _save_speedtest()
         _speedtest['running'] = False
 
 @app.route('/api/speedtest/start', methods=['POST'])
@@ -712,7 +732,7 @@ def api_speedtest_start():
 
 @app.route('/api/speedtest/status')
 def api_speedtest_status():
-    return jsonify({'running': _speedtest['running'], 'result': _speedtest['result'], 'error': _speedtest['error']})
+    return jsonify({'running': _speedtest['running'], 'result': _speedtest['result'], 'last_result': _speedtest.get('last_result'), 'error': _speedtest['error']})
 
 # ============================================================
 # Kill Switch Test (PIN protected)
@@ -1043,9 +1063,30 @@ canvas{width:100%;height:70px;display:block;margin:6px 0}
   </div>
 
   <div class="card">
+    <h3>Session Stats</h3>
+    <div class="detail-row"><span>Peak Down</span><span id="peakDl" style="color:var(--green);font-weight:600">&mdash;</span></div>
+    <div class="detail-row"><span>Peak Up</span><span id="peakUl" style="color:var(--blue);font-weight:600">&mdash;</span></div>
+    <div class="detail-row"><span>Data This Session</span><span id="sessionData">&mdash;</span></div>
+    <div class="detail-row"><span>VPN Uptime</span><span id="sessionUptime">&mdash;</span></div>
+    <div class="detail-row"><span>Reconnects</span><span id="reconnectCount">&mdash;</span></div>
+  </div>
+
+  <div class="card span-2">
     <h3>Speed Test</h3>
     <div id="speedtestResult" class="result-box"><div style="color:var(--dim);font-size:14px">Not run yet</div></div>
     <button class="btn btn-go btn-full" id="btnSpeedtest" onclick="runSpeedtest()">Run Speed Test</button>
+    <div style="margin-top:8px;text-align:center">
+      <a href="#" onclick="document.getElementById('consoleSpeedInfo').style.display = document.getElementById('consoleSpeedInfo').style.display==='none'?'block':'none';return false" style="color:var(--blue);font-size:12px;text-decoration:none">▸ How to test real speed on your console</a>
+      <div id="consoleSpeedInfo" style="display:none;color:var(--dim);font-size:11px;margin-top:8px;text-align:left;line-height:1.5;background:rgba(255,255,255,.03);padding:8px;border-radius:6px">
+        The Pi's speed test may differ from your console's real-world speed.<br>
+        For the most accurate results, test directly from your console:<br><br>
+        <strong>PlayStation 5 / PS4:</strong><br>
+        Settings → Network → Connection Status → Test Internet Connection<br><br>
+        <strong>Xbox Series X/S/One:</strong><br>
+        Settings → General → Network Settings → Test Network Connection<br>
+        (then "Detailed Network Statistics" for upload/ping)
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -1079,7 +1120,12 @@ canvas{width:100%;height:70px;display:block;margin:6px 0}
 
   <div class="card">
     <h3>QR Code</h3>
-    <div class="result-box"><img id="qrImg" style="display:none;max-width:200px;border-radius:8px" alt="QR Code"><div id="qrStatus" style="color:var(--dim);font-size:14px">Tap to generate</div></div>
+    <div class="result-box">
+      <div id="qrContainer" style="display:none;background:#fff;padding:16px;border-radius:8px;width:fit-content;margin:0 auto">
+        <img id="qrImg" style="display:block;max-width:200px" alt="QR Code">
+      </div>
+      <div id="qrStatus" style="color:var(--dim);font-size:14px;text-align:center">Tap to generate</div>
+    </div>
     <button class="btn btn-rec btn-full" onclick="showQr()">Show QR Code</button>
   </div>
 
@@ -1111,7 +1157,7 @@ canvas{width:100%;height:70px;display:block;margin:6px 0}
   </div>
 
 </div>
-<div class="footer">__CONSOLE__ VPN Dashboard</div>
+<div class="footer">__CONSOLE__ VPN Dashboard v1.0.1<br>by Daniel Smyth &middot; <a href="https://github.com/daniel-smyth09/Playstation-Xbox-VPN-Dashboard" style="color:var(--dim);text-decoration:none">GitHub</a></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1147,7 +1193,30 @@ async function refreshStatus(){
 }
 
 let dlH=new Array(40).fill(0),ulH=new Array(40).fill(0);
+let _peakDl=0,_peakUl=0,_sessionTotal=0,_sessionStart=0,_reconnects=0,_wasConnected=false;
+
 async function refreshTput(){const t=await api('/api/throughput');if(!t.available){$('dlSpd').textContent='0.0';$('ulSpd').textContent='0.0';return}$('dlSpd').textContent=t.rx_mbps.toFixed(1);$('ulSpd').textContent=t.tx_mbps.toFixed(1);dlH.push(t.rx_mbps);dlH.shift();ulH.push(t.tx_mbps);ulH.shift();drawChart()}
+
+async function refreshSessionStats(){
+  const s=await api('/api/status');
+  if(s.state==='Connected'){
+    if(!_sessionStart){_sessionStart=Date.now();_wasConnected=true}
+    if(!_wasConnected){_wasConnected=true}
+    const dl=parseFloat($('dlSpd').textContent)||0;
+    const ul=parseFloat($('ulSpd').textContent)||0;
+    if(dl>_peakDl)_peakDl=dl;
+    if(ul>_peakUl)_peakUl=ul;
+    _sessionTotal=parseFloat(s.total_rx.replace(/[^0-9.]/g,''))||_sessionTotal;
+  }else{
+    if(_wasConnected){_reconnects++;_wasConnected=false}
+    if(!_sessionStart)_sessionStart=Date.now();
+  }
+  $('peakDl').textContent=_peakDl.toFixed(1)+' Mbps';
+  $('peakUl').textContent=_peakUl.toFixed(1)+' Mbps';
+  $('sessionData').textContent=s.total_rx+' DL / '+s.total_tx+' UL';
+  $('sessionUptime').textContent=s.connection_time||'—';
+  $('reconnectCount').textContent=_reconnects;
+}
 function drawChart(){const c=$('chart'),x=c.getContext('2d');c.width=c.offsetWidth;c.height=c.offsetHeight;const w=c.width,h=c.height;x.clearRect(0,0,w,h);const mx=Math.max(...dlH,...ulH,10);const st=w/(dlH.length-1);x.strokeStyle='rgba(255,255,255,.04)';x.lineWidth=1;for(let i=0;i<=4;i++){const y=h/4*i;x.beginPath();x.moveTo(0,y);x.lineTo(w,y);x.stroke()}x.fillStyle='rgba(59,185,80,.12)';x.beginPath();x.moveTo(0,h);dlH.forEach((v,i)=>x.lineTo(i*st,h-(v/mx)*h));x.lineTo(w,h);x.closePath();x.fill();x.strokeStyle='#3fb950';x.lineWidth=2;x.beginPath();dlH.forEach((v,i)=>{const y=h-(v/mx)*h;i===0?x.moveTo(0,y):x.lineTo(i*st,y)});x.stroke();x.strokeStyle='#58a6ff';x.lineWidth=2;x.beginPath();ulH.forEach((v,i)=>{const y=h-(v/mx)*h;i===0?x.moveTo(0,y):x.lineTo(i*st,y)});x.stroke();x.fillStyle='rgba(255,255,255,.3)';x.font='10px sans-serif';x.fillText(mx.toFixed(0)+' Mbps',4,11)}
 
 async function refreshSys(){const s=await api('/api/system');$('cpuBar').style.width=s.cpu+'%';$('cpuTxt').textContent=s.cpu.toFixed(1)+'%';$('cpuBar').className='bar-fill '+(s.cpu>80?'danger':s.cpu>60?'warn':'');$('memBar').style.width=s.mem_pct+'%';$('memTxt').textContent=s.mem_pct.toFixed(1)+'%';$('memBar').className='bar-fill '+(s.mem_pct>85?'danger':s.mem_pct>70?'warn':'');$('temp').textContent=s.temp.toFixed(1)+' C';$('uptime').textContent=s.uptime_str;$('load').textContent=s.load}
@@ -1176,7 +1245,8 @@ async function refreshLogs(){const l=await api('/api/logs');$('logs').textConten
 async function refreshHistory(){const h=await api('/api/history');const d=$('history');if(!h.history||!h.history.length){d.innerHTML='<div style="color:var(--dim);font-size:14px">No history yet</div>';return}const ec={connected:['conn','Connected'],disconnected:['disc','Disconnected'],daily_reconnect:['rec','Daily Reconnect'],wol_sent:['wol','Wake-on-LAN sent']};d.innerHTML=h.history.slice(0,20).map(e=>{const [cls,label]=ec[e.event]||['conn',e.event];const dt=new Date(e.ts*1000);const ts=dt.toLocaleString('en-GB',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});return '<div class="hist-item"><span class="hist-dot '+cls+'"></span><span class="hist-time">'+ts+'</span><span class="hist-event">'+label+(e.region?' &middot; '+prettyRegion(e.region):'')+'</span></div>'}).join('')}
 
 async function runSpeedtest(){$('btnSpeedtest').disabled=true;$('btnSpeedtest').textContent='Running...';$('speedtestResult').innerHTML='<div style="color:var(--amber)">Testing... (~30-60s)</div>';await api('/api/speedtest/start',{method:'POST'});pollSpeedtest()}
-async function pollSpeedtest(){const s=await api('/api/speedtest/status');if(s.running){setTimeout(pollSpeedtest,2e3);return}$('btnSpeedtest').disabled=false;$('btnSpeedtest').textContent='Run Speed Test';if(s.error){$('speedtestResult').innerHTML='<div style="color:var(--red)">Error: '+s.error+'</div>';return}if(s.result){const r=s.result;$('speedtestResult').innerHTML='<div class="speed-row"><div class="speed-box"><div class="speed-val dl">'+r.download+'</div><div class="speed-unit">Mbps Down</div></div><div class="speed-box"><div class="speed-val ul">'+r.upload+'</div><div class="speed-unit">Mbps Up</div></div></div><div class="detail-row"><span>Ping</span><span>'+r.ping+' ms</span></div><div class="detail-row"><span>Server</span><span>'+r.server+'</span></div><div class="detail-row"><span>ISP</span><span>'+r.isp+'</span></div>'}}
+function fmtSpeedtest(r){if(!r)return '<div style="color:var(--dim);font-size:14px">Not run yet</div>';var dt=r.ts?new Date(r.ts*1000).toLocaleString('en-GB',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';return '<div class="speed-row"><div class="speed-box"><div class="speed-val dl">'+r.download+'</div><div class="speed-unit">Mbps Down</div></div><div class="speed-box"><div class="speed-val ul">'+r.upload+'</div><div class="speed-unit">Mbps Up</div></div></div><div class="detail-row"><span>Ping</span><span>'+r.ping+' ms</span></div><div class="detail-row"><span>Server</span><span>'+r.server+'</span></div><div class="detail-row"><span>ISP</span><span>'+r.isp+'</span></div><div class="detail-row"><span>Last Run</span><span style="color:var(--dim)">'+dt+'</span></div>'}
+async function pollSpeedtest(){const s=await api('/api/speedtest/status');if(s.running){setTimeout(pollSpeedtest,2e3);return}$('btnSpeedtest').disabled=false;$('btnSpeedtest').textContent='Run Speed Test';if(s.error&&!s.last_result){$('speedtestResult').innerHTML='<div style="color:var(--red)">Error: '+s.error+'</div>';return}if(s.result){$('speedtestResult').innerHTML=fmtSpeedtest(s.result)}else if(s.last_result){$('speedtestResult').innerHTML=fmtSpeedtest(s.last_result)}}
 async function runKillswitchTest(){const pin=await promptPin();if(!pin)return;$('btnKillswitch').disabled=true;$('btnKillswitch').textContent='Testing...';$('ksResult').innerHTML='<div style="color:var(--amber)">Disconnecting VPN...</div>';await api('/api/killswitch-test',{method:'POST',body:JSON.stringify({pin}),headers:{'Content-Type':'application/json'}});pollKillswitch()}
 async function pollKillswitch(){const s=await api('/api/killswitch-status');if(s.running){setTimeout(pollKillswitch,2e3);return}$('btnKillswitch').disabled=false;$('btnKillswitch').textContent='Test Kill Switch';if(s.error){$('ksResult').innerHTML='<div style="color:var(--red)">Error: '+s.error+'</div>';return}if(s.result){const col=s.result.passed?'var(--green)':'var(--red)';$('ksResult').innerHTML='<div style="color:'+col+';font-size:14px;font-weight:600">'+s.result.message+'</div>'}}
 
@@ -1195,7 +1265,7 @@ async function refreshDataStats(){const s=await api('/api/datastats');drawDataCh
 function drawDataChart(days){const c=$('dataChart'),x=c.getContext('2d');c.width=c.offsetWidth;c.height=120;const w=c.width,h=c.height;x.clearRect(0,0,w,h);if(!days.length){x.fillStyle='var(--dim)';x.font='12px sans-serif';x.fillText('No data yet - stats accumulate over time',w/2-90,h/2);return}const allB=days.map(d=>(d.rx||0)+(d.tx||0));const mx=Math.max(...allB,1);const bw=w/days.length*0.6;const gap=w/days.length;x.fillStyle='#3fb950';days.forEach((d,i)=>{const bh=(d.rx||0)/mx*h;x.fillRect(i*gap+gap*0.15,h-bh,bw,bh)});x.fillStyle='#58a6ff';days.forEach((d,i)=>{const bh=(d.tx||0)/mx*h;x.fillRect(i*gap+gap*0.15+bw,h-bh,bw*0.4,bh)});x.fillStyle='var(--dim)';x.font='10px sans-serif';days.forEach((d,i)=>{const dt=new Date(d.date);const lbl=dt.toLocaleDateString('en-GB',{weekday:'short'});x.fillText(lbl,i*gap+gap*0.3,h+14)});const tRx=days.reduce((s,d)=>s+(d.rx||0),0);const tTx=days.reduce((s,d)=>s+(d.tx||0),0);$('dataLegend').innerHTML='<span>&#9650; DL: <strong style="color:var(--green)">'+fmtData(tRx)+'</strong></span><span>&#9650; UL: <strong style="color:var(--blue)">'+fmtData(tTx)+'</strong></span>'}
 function fmtData(b){for(const u of ['B','KB','MB','GB','TB']){if(b<1024)return b.toFixed(1)+' '+u;b/=1024}return b.toFixed(1)+' PB'}
 
-async function showQr(){try{const r=await fetch('/api/qr');if(!r.ok){const e=await r.json();$('qrStatus').textContent=e.error||'Failed';return}const svg=await r.text();$('qrImg').src='data:image/svg+xml;base64,'+btoa(svg);$('qrImg').style.display='block';$('qrStatus').textContent='Scan to open on another device'}catch(e){$('qrStatus').textContent='Error generating QR'}}
+async function showQr(){try{const r=await fetch('/api/qr');if(!r.ok){const e=await r.json();$('qrStatus').textContent=e.error||'Failed';return}const svg=await r.text();$('qrImg').src='data:image/svg+xml;base64,'+btoa(svg);$('qrImg').style.display='block';$('qrContainer').style.display='block';$('qrStatus').textContent='Scan to open on another device'}catch(e){$('qrStatus').textContent='Error generating QR'}}
 
 let _sniffOn=false;
 async function startSniff(){_sniffOn=true;$('btnSniffStart').style.display='none';$('btnSniffStop').style.display='block';$('sniffStatus').textContent='(running)';$('sniffStatus').style.color='var(--green)';await api('/api/sniffer/start',{method:'POST'});pollSniff()}
@@ -1211,8 +1281,8 @@ if('Notification'in window&&Notification.permission==='default'){document.addEve
 if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}
 
 function safe(fn, name){return async()=>{try{await fn()}catch(e){console.error('Dashboard error in '+name+':',e)}}}
-safe(refreshStatus,'status')();safe(refreshRegions,'regions')();safe(refreshSys,'sys')();safe(refreshLogs,'logs')();safe(refreshHistory,'history')();safe(refreshDataStats,'datastats')();safe(pollSpeedtest,'speedtest')();safe(pollKillswitch,'killswitch')();safe(pollLatency,'latency')();safe(pollDns,'dns')();
-setInterval(()=>safe(refreshStatus,'status')(),3e3);setInterval(()=>safe(refreshTput,'tput')(),1e3);setInterval(()=>safe(refreshSys,'sys')(),5e3);setInterval(()=>safe(refreshLogs,'logs')(),3e4);setInterval(()=>safe(refreshHistory,'history')(),15e3);setInterval(()=>safe(refreshDataStats,'datastats')(),3e4);
+safe(refreshStatus,'status')();safe(refreshRegions,'regions')();safe(refreshSys,'sys')();safe(refreshLogs,'logs')();safe(refreshHistory,'history')();safe(refreshDataStats,'datastats')();safe(refreshSessionStats,'session')();safe(pollSpeedtest,'speedtest')();safe(pollKillswitch,'killswitch')();safe(pollLatency,'latency')();safe(pollDns,'dns')();
+setInterval(()=>safe(refreshStatus,'status')(),3e3);setInterval(()=>safe(refreshTput,'tput')(),1e3);setInterval(()=>safe(refreshSys,'sys')(),5e3);setInterval(()=>safe(refreshLogs,'logs')(),3e4);setInterval(()=>safe(refreshHistory,'history')(),15e3);setInterval(()=>safe(refreshDataStats,'datastats')(),3e4);setInterval(()=>safe(refreshSessionStats,'session')(),5e3);
 </script>
 </body>
 </html>'''
@@ -1221,6 +1291,7 @@ setInterval(()=>safe(refreshStatus,'status')(),3e3);setInterval(()=>safe(refresh
 _ensure_background()
 _load_state()
 _load_data_stats()
+_load_speedtest()
 if _state.get('autoconnect') and not (_watchdog['thread'] and _watchdog['thread'].is_alive()):
     _watchdog['enabled'] = True
     _watchdog['thread'] = threading.Thread(target=_watchdog_loop, daemon=True)

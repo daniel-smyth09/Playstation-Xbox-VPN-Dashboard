@@ -1,6 +1,12 @@
 # Playstation/Xbox VPN PIA Dashboard
 
+<<<<<<< HEAD
 A complete, self-contained installer that turns a Raspberry Pi into a VPN gateway for your **PlayStation** (PS4/PS5) or **Xbox** (Series S/Series X). All console traffic is encrypted and routed through Private Internet Access (PIA) > and nothing else on your network is affected.
+=======
+**Version:** 1.0.1
+
+A complete, self-contained installer that turns a Raspberry Pi into a VPN gateway for your **PlayStation** (PS4/PS5) or **Xbox** (Series S/Series X). All console traffic is encrypted and routed through Private Internet Access (PIA) — and nothing else on your network is affected.
+>>>>>>> b4d9744 (v1.0.1 - UI changes and fixed speedtest)
 
 **Author:** Daniel Smyth  
 **GitHub:** [daniel-smyth09/Playstation-Xbox-VPN-Dashboard](https://github.com/daniel-smyth09/Playstation-Xbox-VPN-Dashboard)
@@ -247,14 +253,14 @@ http://PI-IP:8080
 |----------|----------|
 | **VPN Control** | Live status, IP, region, connection timer, connect/disconnect/reconnect, quick-reconnect |
 | **Regions** | Searchable list, favourites, quick-connect bar, one-tap switching |
-| **Throughput** | Live download/upload graph, session totals |
-| **Diagnostics** | Speed test, gaming latency test, live latency monitor, kill switch test, DNS leak test |
-| **Stats** | 7-day data usage chart, connection history |
+| **Throughput** | Live download/upload graph, session totals, peak speeds |
+| **Diagnostics** | Speed test (persisted with timestamp), gaming latency test, live latency monitor, kill switch test, DNS leak test |
+| **Stats** | Session stats (peak/up/down/reconnects), 7-day data usage chart, connection history |
 | **Traffic** | Console packet sniffer (DNS queries + connections) |
 | **System** | CPU/RAM/temp/uptime, auto-reconnect toggle, daily scheduled reconnect |
 | **Power** | Reboot/shutdown Pi (PIN protected), QR code for new devices |
 
-**Defaults:** Region = Netherlands · Protocol = WireGuard · PIN = printed at end of install
+**Defaults:** Region = auto · Protocol = WireGuard · PIN = printed at end of install
 
 ---
 
@@ -288,6 +294,35 @@ piactl get regions
 3. **In dashboard:** Tap "Test Kill Switch"
    - Should show ✅ "Kill switch working"
    - This disconnects the VPN for ~6 seconds, then reconnects
+
+---
+
+## About Speed Tests
+
+The dashboard includes a built-in speed test that tests the Pi's VPN throughput. This is useful for diagnosing issues, but **results may vary** between the dashboard test and your console's own test because they use different testing methods and servers.
+
+### How to test your REAL VPN speed
+
+For the most accurate measurement of what your console actually gets through the VPN, test directly from the console:
+
+**PlayStation 5 / PS4:**
+1. Settings → Network → Connection Status
+2. Select **Test Internet Connection**
+3. Wait for the Download and Upload results
+4. This tests against PSN servers through your VPN tunnel
+
+**Xbox Series X/S/One:**
+1. Settings → General → Network Settings
+2. Select **Test Network Connection**
+3. Wait for the Download speed result
+4. Select **Detailed Network Statistics** for upload speed and latency
+
+**What to expect (Pi 5 with WireGuard):**
+- Download: typically 700–900 Mbps (limited by your ISP speed)
+- Upload: typically 50–100 Mbps
+- Latency: depends on region, usually 10–50 ms to nearest PIA server
+
+If the dashboard and console show significantly different results, trust the **console** number — that's your actual gaming speed.
 
 ---
 
